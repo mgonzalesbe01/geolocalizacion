@@ -18,7 +18,7 @@
     <script>
       const codigo = "{{ codigo }}";
 
-      function enviarUbicacion(lat, lon) {
+      function enviarUbicacion(lat, lon, precision) {
         fetch("/actualizar", {
           method: "POST",
           headers: {
@@ -28,7 +28,7 @@
             codigo
           )}&latitud=${encodeURIComponent(lat)}&longitud=${encodeURIComponent(
             lon
-          )}`,
+          )}&precision=${encodeURIComponent(precision)}`,
         });
       }
 
@@ -43,12 +43,13 @@
           (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
+            const precision = position.coords.accuracy;
 
-            enviarUbicacion(lat, lon);
+            enviarUbicacion(lat, lon, precision);
 
             document.getElementById("status").innerText = `Lat: ${lat.toFixed(
               6
-            )}, Lon: ${lon.toFixed(6)}`;
+            )}, Lon: ${lon.toFixed(6)}\nPrecisión: ±${precision.toFixed(2)} m`;
           },
           (error) => {
             let mensaje = "";
