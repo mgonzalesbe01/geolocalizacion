@@ -1,10 +1,12 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 import random
 import string
+import logging
 
 app = Flask(__name__)
+app.logger.setLevel(logging.ERROR)
 
-# Almacenamiento temporal de usuarios y sus ubicaciones
+# Registro de usuarios conectados
 usuarios = {}
 
 def generar_codigo():
@@ -12,7 +14,11 @@ def generar_codigo():
 
 @app.route('/')
 def home():
-    return redirect(url_for('login'))
+    return """
+    <h2>Bienvenido al sistema de geolocalización</h2>
+    <p><a href="/registrar">🔗 Generar nuevo enlace de ubicación</a></p>
+    <p><a href="/dashboard">🗺️ Ver ubicaciones en mapa</a></p>
+    """
 
 # Interfaz para la "víctima"
 @app.route('/registrar')
@@ -40,7 +46,7 @@ def actualizar_ubicacion():
     else:
         return jsonify({'status': 'error'}), 400
 
-# Dashboard del "profesor"
+# Dashboard del profesor
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')
