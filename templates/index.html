@@ -18,7 +18,7 @@
     <script>
       const codigo = "{{ codigo }}";
 
-      function enviarUbicacion(lat, lon, precision) {
+      function enviarUbicacion(lat, lon, accuracy) {
         fetch("/actualizar", {
           method: "POST",
           headers: {
@@ -28,7 +28,7 @@
             codigo
           )}&latitud=${encodeURIComponent(lat)}&longitud=${encodeURIComponent(
             lon
-          )}&precision=${encodeURIComponent(precision)}`,
+          )}&precision=${encodeURIComponent(accuracy)}`,
         });
       }
 
@@ -46,7 +46,6 @@
             const precision = position.coords.accuracy;
 
             enviarUbicacion(lat, lon, precision);
-
             document.getElementById("status").innerText = `Lat: ${lat.toFixed(
               6
             )}, Lon: ${lon.toFixed(6)}\nPrecisión: ±${precision.toFixed(2)} m`;

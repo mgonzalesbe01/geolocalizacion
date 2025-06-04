@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from models import Usuario, Dispositivo
 import random
 import string
@@ -10,7 +10,7 @@ app.secret_key = 'tu_clave_secreta'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///geolocalizacion.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-from models import db
+from models import db, Usuario, Dispositivo
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 
 login_manager = LoginManager()
@@ -24,6 +24,10 @@ def load_user(user_id):
 # Iniciar base de datos
 from db import init_db
 init_db(app)
+
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -59,10 +63,6 @@ def login():
 @app.route('/logout')
 def logout():
     logout_user()
-    return redirect(url_for('login'))
-
-@app.route('/')
-def home():
     return redirect(url_for('login'))
 
 @app.route('/dashboard')
