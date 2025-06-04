@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Compartir Ubicación</title>
+    <style>
+      body {
+        font-family: Arial;
+        text-align: center;
+        padding: 50px;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Compartiendo tu ubicación...</h2>
+    <p id="status">Esperando permiso...</p>
+
+    <script>
+      const codigo = "{{ codigo }}";
+
+      function enviarUbicacion(lat, lon) {
+        fetch("/actualizar", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `codigo=${encodeURIComponent(
+            codigo
+          )}&latitud=${encodeURIComponent(lat)}&longitud=${encodeURIComponent(
+            lon
+          )}`,
+        });
+      }
+
+      function getLocation() {
+        if (!navigator.geolocation) {
+          document.getElementById("status").innerText =
+            "Geolocalización no soportada.";
+          return;
+        }
+
+        navigator.geolocation.watchPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+
+            enviarUbicacion(lat, lon);
+
+            document.getElementById("status").innerText = `Lat: ${lat.toFixed(
+              6
+            )}, Lon: ${lon.toFixed(6)}`;
+          },
+          (error) => {
+            let mensaje = "";
+            switch (error.code) {
+              case error.PERMISSION_DENIED:
+                mensaje = "Permiso denegado.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                mensaje = "Ubicación no disponible.";
+                break;
+              case error.TIMEOUT:
+                mensaje = "Tiempo de espera agotado.";
+                break;
+              default:
+                mensaje = "Error desconocido.";
+            }
+            document.getElementById("status").innerText = mensaje;
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      }
+
+      getLocation();
+    </script>
+  </body>
+</html>
