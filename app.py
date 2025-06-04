@@ -2,13 +2,13 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from models import Usuario, Dispositivo
 import random
 import string
+import os
+from flask_sqlalchemy import SQLAlchemy
 
 app = Flask(__name__)
-app.secret_key = 'tu_clave_secreta'
-
-# Configuración de la base de datos
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///geolocalizacion.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///geolocalizacion.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
 from models import db, Usuario, Dispositivo
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
