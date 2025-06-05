@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session
 from models import Usuario, Dispositivo
+from models import db
 import random
 import string
 import os
@@ -16,6 +17,11 @@ from flask_login import LoginManager, login_user, logout_user, login_required, c
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+@app.route('/crear-tablas')
+def crear_tablas():
+    db.create_all()
+    return "Tablas creadas"
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -123,3 +129,8 @@ if __name__ == '__main__':
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port)
+
+
+
+with app.app_context():
+    db.create_all()
