@@ -11,17 +11,39 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key-123')  # Cambia esto en producción
 
 # Configuración de la base de datos
-db_url = os.environ.get("DATABASE_URL", "sqlite:///local.db")
+def get_database_url():
+    # Intenta obtener la URL de varias fuentes
+    db_url = os.environ.get("DATABASE_URL")
+    
+    # Si no está en las variables de entorno, prueba con PostgreSQL estándar de Railway
+    if not db_url:
+        db_url = os.environ.get("POSTGRESQL_URL")
+    
+    # Si sigue sin estar, usa SQLite para desarrollo local
+    if not db_url:
+        return "sqlite:///local.db"
+    
+    # Asegura el formato correcto para PostgreSQL
+    if db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+    
+    return db_url
 
-if db_url.startswith("postgres://"):
-    db_url = db_url.replace("postgres://", "postgresql://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,  # Mejora la estabilidad de la conexión
-    'pool_recycle': 300,    # Recicla conexiones cada 5 minutos
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
 }
+
+# Solo crear tablas si tenemos una conexión válida
+with app.app_context():
+    if app.config['SQLALCHEMY_DATABASE_URI'] and app.config['SQLALCHEMY_DATABASE_URI'] != "sqlite:///local.db":
+        try:
+            db.create_all()
+            print("Tablas creadas exitosamente")
+        except Exception as e:
+            print(f"Error al crear tablas: {str(e)}")
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
