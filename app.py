@@ -34,6 +34,10 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
+@app.route('/')
+def home():
+    return redirect(url_for('login'))
+
 # Ruta temporal para crear tablas si es necesario
 @app.route('/crear-tablas')
 def crear_tablas():
@@ -53,16 +57,24 @@ def test_db():
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
-        nombre = request.form['nombre']
-        password = request.form['password']
+        try:
+            nombre = request.form.get('nombre')
+            password = request.form.get('password')
 
-        if Usuario.query.filter_by(nombre=nombre).first():
-            return "Nombre de usuario ya existe"
+            if not nombre or not password:
+                return "Faltan credenciales", 400
 
-        nuevo_usuario = Usuario(nombre=nombre, password=password)
-        db.session.add(nuevo_usuario)
-        db.session.commit()
-        return redirect(url_for('login'))
+            if Usuario.query.filter_by(nombre=nombre).first():
+                return "Nombre de usuario ya existe", 409  # Conflicto
+
+            nuevo_usuario = Usuario(nombre=nombre, password=password)
+            db.session.add(nuevo_usuario)
+            db.session.commit()
+            return redirect(url_for('login'))
+
+        except Exception as e:
+            app.logger.error(f"Error en /register: {e}")
+            return f"Ocurrió un error interno: {str(e)}", 500
 
     return render_template('register.html')
 
