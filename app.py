@@ -8,15 +8,17 @@ import os
 app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta'
 
-# Configuración de la base de datos
-db_url = os.environ.get("DATABASE_URL", "sqlite:///geolocalizacion.db")
+# Base de datos dinámica
+db_url = os.environ.get("DATABASE_URL")
+if not db_url:
+    raise ValueError("La variable DATABASE_URL no está definida")
+
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
 # Importa modelos después de inicializar db
