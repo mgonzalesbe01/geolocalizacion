@@ -11,7 +11,8 @@ app.secret_key = 'tu_clave_secreta'
 # Base de datos dinámica
 db_url = os.environ.get("DATABASE_URL")
 if not db_url:
-    raise ValueError("La variable DATABASE_URL no está definida")
+    db_url = "sqlite:///fallback.db"
+    #raise ValueError("La variable DATABASE_URL no está definida")
 
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
