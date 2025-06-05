@@ -20,8 +20,8 @@ def get_database_url():
         db_url = os.environ.get("POSTGRESQL_URL")
     
     # Si sigue sin estar, usa SQLite para desarrollo local
-    if not db_url:
-        return "sqlite:///local.db"
+    #if not db_url:
+     #   return "sqlite:///local.db"
     
     # Asegura el formato correcto para PostgreSQL
     if db_url.startswith("postgres://"):
