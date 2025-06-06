@@ -5,6 +5,7 @@ import random
 import string
 import os
 import pymysql
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 # Inicializa PyMySQL
 pymysql.install_as_MySQLdb()
@@ -12,6 +13,7 @@ pymysql.install_as_MySQLdb()
 # Inicializa Flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # Configuración de la base de datos
 db_url = os.environ.get("MYSQL_URL", "sqlite:///local.db")
@@ -43,6 +45,20 @@ class Dispositivo(db.Model):
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+# Configuración de timeout para Flask
+@app.before_request
+def handle_timeout():
+    from flask import request
+    request.start_time = time.time()
+
+@app.after_request
+def log_request_time(response):
+    from flask import request
+    duration = time.time() - request.start_time
+    if duration > 5:  # Log solo si tarda más de 5 segundos
+        app.logger.warning(f'Request took {duration:.2f}s: {request.path}')
+    return response
 
 @login_manager.user_loader
 def load_user(user_id):
