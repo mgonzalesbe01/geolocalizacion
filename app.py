@@ -98,6 +98,10 @@ def api_ubicaciones():
             }
     return jsonify(data)
 
+@app.route('/codigos')
+def ver_codigos():
+    codigos = [d.codigo for d in Dispositivo.query.all()]
+    return jsonify({'codigos': codigos})
 # Para producción - Elimina cualquier referencia a login_required, current_user, etc.
 
 if __name__ == '__main__':
