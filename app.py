@@ -157,6 +157,21 @@ def register():
 
     return render_template('register.html')
 
+@app.route('/routes')
+def list_routes():
+    import urllib.parse
+    output = []
+    for rule in app.url_map.iter_rules():
+        methods = ','.join(rule.methods)
+        line = urllib.parse.unquote(f"{rule.endpoint:50s} {methods:20s} {rule}")
+        output.append(line)
+    return '<pre>' + '\n'.join(sorted(output)) + '</pre>'
+
+@app.route('/dashboard')
+@login_required
+def show_dashboard():  # Cambia el nombre de la función para ser más explícito
+    return render_template('dashboard.html', usuario=current_user)
+
 # Ruta de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
 def login():
