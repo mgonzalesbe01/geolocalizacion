@@ -65,6 +65,14 @@ def load_user(user_id):
 def home():
     return redirect(url_for('login'))
 
+@app.route('/test-db')
+def test_db():
+    try:
+        db.session.execute('SELECT 1')
+        return "Conexión exitosa a la base de datos"
+    except Exception as e:
+        return f"Error de conexión: {str(e)}"
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -116,6 +124,7 @@ def actualizar_ubicacion():
 
     return jsonify({'status': 'error'}), 400
 
+
 @app.route('/api/ubicaciones')
 @login_required
 def api_ubicaciones():
@@ -131,6 +140,4 @@ def api_ubicaciones():
     return jsonify(data)
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True, host='0.0.0.0', port=5000)
