@@ -112,6 +112,30 @@ def crear_tablas():
         return "Tablas creadas exitosamente"
     except Exception as e:
         return f"Error al crear tablas: {str(e)}"
+    
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        try:
+            nombre = request.form['nombre']
+            password = request.form['password']
+
+            if Usuario.query.filter_by(nombre=nombre).first():
+                return render_template('register.html', error="Nombre de usuario ya existe")
+
+            nuevo_usuario = Usuario(nombre=nombre, password=password)
+            db.session.add(nuevo_usuario)
+            db.session.commit()
+
+            login_user(nuevo_usuario)
+            return redirect(url_for('dashboard'))
+
+        except Exception as e:
+            db.session.rollback()
+            return render_template('register.html', error=f"Error: {str(e)}")
+
+    # Método GET - solo mostrar el formulario
+    return render_template('register.html')
 
 # Ruta de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
