@@ -18,29 +18,24 @@ app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
 # Configuración robusta de la base de datos
+# Configuración de la base de datos
 def get_database_url():
-    # 1. Intenta obtener la URL directamente de Railway
-    if 'DATABASE_URL' in os.environ:
-        db_url = os.environ['DATABASE_URL']
-    # 2. Prueba con variables alternativas de Railway
-    elif 'MYSQL_URL' in os.environ:
-        db_url = os.environ['MYSQL_URL']
-    else:
-        # 3. Si no hay variables, muestra error claro
+    # 1. Usa MYSQL_URL como variable primaria
+    db_url = os.environ.get("MYSQL_URL")
+    
+    # 2. Si no existe, muestra error claro
+    if not db_url:
         raise RuntimeError(
-            "No se configuró DATABASE_URL. "
-            "Por favor, añade el addon MySQL/PostgreSQL en Railway y vincula el servicio."
+            "No se encontró MYSQL_URL. "
+            "Verifica que el addon MySQL esté correctamente vinculado en Railway."
         )
     
-    # Convertir URL de MySQL al formato correcto
-    if db_url.startswith('mysql://'):
-        db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
-    elif db_url.startswith('postgres://'):
-        db_url = db_url.replace('postgres://', 'postgresql://', 1)
+    # 3. Asegura el formato correcto para MySQL
+    if db_url.startswith("mysql://"):
+        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
     
     return db_url
 
-# Configuración de Flask-SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
@@ -89,6 +84,24 @@ def db_config():
         "is_railway": "railway" in db_url,
         "variables": dict(os.environ)
     })
+
+@app.route('/db-check')
+def db_check():
+    try:
+        db.session.execute("SELECT 1")
+        return jsonify({
+            "status": "success",
+            "database": "MySQL",
+            "url": app.config['SQLALCHEMY_DATABASE_URI'],
+            "tables": db.engine.table_names()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "current_url": app.config.get('SQLALCHEMY_DATABASE_URI'),
+            "available_vars": {k: v for k, v in os.environ.items() if 'URL' in k or 'DB' in k}
+        }), 500
 
 # Configuración de timeout para Flask
 @app.before_request
