@@ -7,6 +7,7 @@ import os
 import pymysql
 from werkzeug.middleware.proxy_fix import ProxyFix
 import time  # Añade esta línea con los otros imports
+from urllib.parse import urlparse
 
 # Inicializa PyMySQL
 pymysql.install_as_MySQLdb()
@@ -16,26 +17,36 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
+# Configuración robusta de la base de datos
 def get_database_url():
-    # 1. Intenta obtener la URL de Railway
-    db_url = os.environ.get("DATABASE_URL")
+    # 1. Intenta obtener la URL directamente de Railway
+    if 'DATABASE_URL' in os.environ:
+        db_url = os.environ['DATABASE_URL']
+    # 2. Prueba con variables alternativas de Railway
+    elif 'MYSQL_URL' in os.environ:
+        db_url = os.environ['MYSQL_URL']
+    else:
+        # 3. Si no hay variables, muestra error claro
+        raise RuntimeError(
+            "No se configuró DATABASE_URL. "
+            "Por favor, añade el addon MySQL/PostgreSQL en Railway y vincula el servicio."
+        )
     
-    # 2. Si no existe, prueba con variables alternativas
-    if not db_url:
-        db_url = os.environ.get("MYSQL_URL") or os.environ.get("MYSQLDATABASE_URL")
-    
-    # 3. Si sigue sin estar, muestra un error claro
-    if not db_url:
-        print("¡ADVERTENCIA! Usando SQLite local - DATABASE_URL no configurada")
-        return "sqlite:///local.db"
-    
-    # Asegura el formato correcto para MySQL
-    if db_url.startswith("mysql://"):
-        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+    # Convertir URL de MySQL al formato correcto
+    if db_url.startswith('mysql://'):
+        db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
+    elif db_url.startswith('postgres://'):
+        db_url = db_url.replace('postgres://', 'postgresql://', 1)
     
     return db_url
 
+# Configuración de Flask-SQLAlchemy
 app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+}
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
@@ -69,51 +80,14 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-@app.route('/db-verify')
-def db_verify():
+@app.route('/db-config')
+def db_config():
     db_url = app.config['SQLALCHEMY_DATABASE_URI']
-    try:
-        with db.engine.connect() as conn:
-            conn.execute("SELECT 1")
-        return jsonify({
-            "status": "success",
-            "database": "MySQL" if "mysql" in db_url else "SQLite",
-            "url": db_url,
-            "tables": db.engine.table_names()
-        })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": str(e),
-            "current_url": db_url
-        }), 500
-
-@app.route('/db-status')
-def db_status():
-    try:
-        with app.app_context():
-            # Verifica si las tablas existen
-            inspector = db.inspect(db.engine)
-            tables = inspector.get_table_names()
-            return jsonify({
-                "status": "success",
-                "tables": tables,
-                "database_url": app.config['SQLALCHEMY_DATABASE_URI']
-            })
-    except Exception as e:
-        return jsonify({
-            "status": "error",
-            "error": str(e)
-        }), 500
-
-@app.route('/db-info')
-def db_info():
-    db_url = app.config['SQLALCHEMY_DATABASE_URI']
-    db_type = "MySQL" if "mysql" in db_url.lower() else "PostgreSQL" if "postgresql" in db_url.lower() else "SQLite"
     return jsonify({
-        "database_type": db_type,
-        "database_url": db_url,
-        "tables": db.engine.table_names()
+        "database": "MySQL" if "mysql" in db_url else "PostgreSQL" if "postgresql" in db_url else "SQLite",
+        "url": db_url,
+        "is_railway": "railway" in db_url,
+        "variables": dict(os.environ)
     })
 
 # Configuración de timeout para Flask
