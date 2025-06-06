@@ -6,7 +6,7 @@ import string
 import os
 import pymysql
 import logging
-app.logger.setLevel(logging.DEBUG)
+
 
 # Para usar PyMySQL como motor
 pymysql.install_as_MySQLdb()
@@ -14,6 +14,7 @@ pymysql.install_as_MySQLdb()
 # Inicializa Flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
+app.logger.setLevel(logging.DEBUG)
 
 # Configuración de la base de datos
 db_url = os.environ.get("MYSQL_URL", "sqlite:///local.db")
