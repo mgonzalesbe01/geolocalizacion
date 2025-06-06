@@ -6,32 +6,35 @@ import string
 import os
 import pymysql
 
-# Inicializa MySQL para Python
+# Para usar PyMySQL como motor
 pymysql.install_as_MySQLdb()
 
 # Inicializa Flask
 app = Flask(__name__)
-app.secret_key = 'tu_clave_secreta'
+app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 
 # Configuración de la base de datos
-# Configuración de la base de datos
-db_url = 'mysql+pymysql://usuario:contraseña@host:puerto/nombre_db'
+db_url = os.environ.get("DATABASE_URL", "sqlite:///fallback.db")
+if db_url.startswith("mysql://") and not db_url.startswith("mysql+pymysql://"):
+    db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
 # Modelos
 class Usuario(UserMixin, db.Model):
+    __tablename__ = 'usuario'
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), unique=True, nullable=False)
+    nombre = db.Column(db.String(100), unique=True, nullable=False, index=True)
     password = db.Column(db.String(200), nullable=False)
 
 class Dispositivo(db.Model):
+    __tablename__ = 'dispositivo'
     id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(8), unique=True, nullable=False)
+    codigo = db.Column(db.String(8), unique=True, nullable=False, index=True)
     alias = db.Column(db.String(100))
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
     usuario = db.relationship('Usuario', backref='dispositivos')
@@ -48,10 +51,14 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
-# Rutas comunes
+# Rutas públicas
 @app.route('/')
 def home():
     return redirect(url_for('login'))
+
+@app.route('/ping')
+def ping():
+    return "pong"
 
 @app.route('/test-db')
 def test_db():
@@ -61,11 +68,23 @@ def test_db():
     except Exception as e:
         return f"Error de conexión: {str(e)}"
 
+@app.route('/crear-tablas')
+def crear_tablas():
+    try:
+        db.create_all()
+        return "Tablas creadas exitosamente"
+    except Exception as e:
+        return f"Error al crear tablas: {str(e)}"
+
+# Ruta de inicio de sesión
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         nombre = request.form.get('nombre')
         password = request.form.get('password')
+
+        if not nombre or not password:
+            return "Faltan credenciales", 400
 
         usuario = Usuario.query.filter_by(nombre=nombre).first()
 
@@ -77,6 +96,7 @@ def login():
 
     return render_template('login.html')
 
+# Ruta para generar dispositivos únicos
 @app.route('/registrar-dispositivo', methods=['POST'])
 @login_required
 def registrar_dispositivo():
@@ -87,6 +107,7 @@ def registrar_dispositivo():
     db.session.commit()
     return jsonify({'codigo': codigo})
 
+# Página para obtener ubicación
 @app.route('/<string:codigo>')
 def mostrar_pagina(codigo):
     dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
@@ -94,6 +115,7 @@ def mostrar_pagina(codigo):
         return "Código inválido", 404
     return render_template('index.html', codigo=codigo)
 
+# Actualizar ubicación del dispositivo
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
     codigo = request.form.get('codigo')
@@ -112,7 +134,7 @@ def actualizar_ubicacion():
 
     return jsonify({'status': 'error'}), 400
 
-
+# API REST para el dashboard
 @app.route('/api/ubicaciones')
 @login_required
 def api_ubicaciones():
@@ -123,9 +145,16 @@ def api_ubicaciones():
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'alias': d.alias
+                'alias': d.alias,
+                'precision': d.precision
             }
     return jsonify(data)
 
+# Evitar error con favicon.ico
+@app.route('/favicon.ico')
+def favicon():
+    return "", 204
+
+# Iniciar en modo desarrollo local
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
