@@ -9,47 +9,60 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import time  # Añade esta línea con los otros imports
 from urllib.parse import urlparse
 
-# Inicializa PyMySQL
-pymysql.install_as_MySQLdb()
-
-# Inicializa Flask
+# Primero: Crear la aplicación Flask
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración mejorada de la base de datos
-def get_database_url():
-    # 1. Intenta con MYSQL_URL (Railway)
-    if 'MYSQL_URL' in os.environ:
-        db_url = os.environ['MYSQL_URL']
-    # 2. Prueba con DATABASE_URL (estándar)
-    elif 'DATABASE_URL' in os.environ:
-        db_url = os.environ['DATABASE_URL']
-    # 3. Modo desarrollo local con SQLite
-    else:
-        print("¡Modo desarrollo! Usando SQLite local")
-        return "sqlite:///local.db"
+# Segundo: Configurar la clave secreta
+app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
+
+# Tercero: Inicializar SQLAlchemy (sin configurar URL todavía)
+db = SQLAlchemy()
+
+# Cuarto: Definir tus modelos aquí
+class Usuario(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False)
+    password = db.Column(db.String(200), nullable=False)
+
+class Dispositivo(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    codigo = db.Column(db.String(8), unique=True, nullable=False)
+    # ... otros campos
+
+# Quinto: Función para configurar la base de datos
+def configure_database():
+    # Obtener URL de conexión
+    db_url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
     
-    # Convertir URL de MySQL al formato correcto
-    if db_url.startswith('mysql://'):
-        return db_url.replace('mysql://', 'mysql+pymysql://', 1)
-    return db_url
-
-# Configuración de Flask-SQLAlchemy
-try:
-    app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
+    if db_url:
+        if db_url.startswith('mysql://'):
+            db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
+        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
+    else:
+        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///local.db'
+        print("⚠️ Usando SQLite local (MYSQL_URL no encontrada)")
+    
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     
-    # Verificación temprana de la conexión
-    with app.app_context():
-        db.engine.connect()
-        print("✅ Conexión a la base de datos exitosa")
-except Exception as e:
-    print(f"❌ Error de conexión: {str(e)}")
-    # Modo fallback seguro para desarrollo
-    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///local.db"
-    print("⚠️ Usando SQLite local como fallback")
+    # Inicializar la aplicación con la base de datos
+    db.init_app(app)
     
+    # Crear tablas si no existen
+    with app.app_context():
+        try:
+            db.create_all()
+            print("✅ Tablas creadas exitosamente")
+        except Exception as e:
+            print(f"❌ Error al crear tablas: {str(e)}")
+
+# Sexto: Configurar e inicializar la base de datos
+configure_database()
+
+# El resto de tu aplicación (rutas, etc.) viene después
+@app.route('/')
+def home():
+    return "¡Aplicación funcionando!"
+
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
