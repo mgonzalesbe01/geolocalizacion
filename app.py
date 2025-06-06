@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, login_required,jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask_login import login_required
 from flask_sqlalchemy import SQLAlchemy
 import random
 import string
