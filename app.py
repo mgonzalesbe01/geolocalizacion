@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, login_required,jsonify, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 import random
 import string
@@ -21,6 +21,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(8), unique=True, nullable=False)
+    alias = db.Column(db.String(100))  # Campo para el alias
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
@@ -40,18 +41,21 @@ def home():
 def mapa():
     return render_template('mapa.html')
 
-@app.route('/generar-enlace')
+@app.route('/generar-enlace', methods=['POST'])
 def generar_enlace():
     """Genera un código aleatorio y devuelve el enlace"""
+    alias = request.form.get('alias')
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
     
     # Guarda el dispositivo en la base de datos
-    nuevo = Dispositivo(codigo=codigo)
+    nuevo = Dispositivo(codigo=codigo, alias=alias)
     db.session.add(nuevo)
     db.session.commit()
     
     return jsonify({
-        'enlace': f'https://{request.host}/{codigo}' 
+        'enlace': f'https://{request.host}/{codigo}', 
+        'codigo': codigo,
+        'alias': alias or codigo
     })
 
 @app.route('/<string:codigo>')
@@ -92,6 +96,31 @@ def actualizar_ubicacion():
         db.session.rollback()
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
+@app.route('/log')
+def log_datos():
+    datos = Dispositivo.query.all()
+    return jsonify([{
+        'codigo': d.codigo,
+        'lat': d.lat,
+        'lon': d.lon,
+        'precision': d.precision
+    } for d in datos])
+
+@app.route('/eliminar/<string:codigo>')
+def eliminar_dispositivo(codigo):
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
+
+    if not disp:
+        return jsonify({'status': 'error', 'mensaje': 'Código no encontrado'}), 404
+
+    try:
+        db.session.delete(disp)
+        db.session.commit()
+        return jsonify({'status': 'ok', 'mensaje': f'Código {codigo} eliminado'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'mensaje': str(e)}), 500
+
 @app.route('/api/ubicaciones')
 def api_ubicaciones():
     dispositivos = Dispositivo.query.all()
@@ -101,9 +130,24 @@ def api_ubicaciones():
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'precision': d.precision
+                'precision': d.precision,
+                'alias': d.alias or d.codigo
             }
     return jsonify(data)
+
+
+@app.route('/registrar-dispositivo', methods=['POST'])
+@login_required
+def registrar_dispositivo():
+    alias = request.form.get('alias')
+    codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    
+    nuevo = Dispositivo(codigo=codigo, alias=alias, usuario_id=current_user.id)
+    db.session.add(nuevo)
+    db.session.commit()
+    
+    return jsonify({'codigo': codigo})
+
 
 @app.route('/codigos')
 def ver_codigos():
