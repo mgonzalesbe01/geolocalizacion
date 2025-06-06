@@ -91,7 +91,7 @@ def generar_enlace():
     db.session.add(nuevo)
     db.session.commit()
 
-    # Devuelve el enlace completo
+
     return jsonify({
         'enlace': f'https://tu-app.onrender.com/{codigo}' 
     })
