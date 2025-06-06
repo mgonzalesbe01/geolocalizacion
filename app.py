@@ -18,24 +18,32 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 # =============================================
 
 # Obtener credenciales de las variables de entorno
-MYSQL_CREDENTIALS = {
-    'user': os.environ.get('MYSQLUSER', 'root'),
-    'password': os.environ.get('MYSQL_ROOT_PASSWORD', ''),  # Sin valor por defecto
-    'host': os.environ.get('MYSQLHOST', 'containers.railway.app'),  # Dominio público
-    'port': os.environ.get('MYSQLPORT', '3306'),
-    'database': os.environ.get('MYSQLDATABASE', 'railway')
-}
+# Configuración robusta para MySQL en Railway
+def get_db_config():
+    try:
+        return {
+            'user': os.environ['MYSQLUSER'],
+            'password': os.environ['MYSQLPASSWORD'],
+            'host': os.environ['MYSQLHOST'],
+            'port': os.environ['MYSQLPORT'],
+            'database': os.environ['MYSQLDATABASE'],
+            'ssl': {'ssl': {'ca': '/etc/ssl/cert.pem'}}  # Importante para Railway
+        }
+    except KeyError as e:
+        raise RuntimeError(f"Falta variable de entorno: {str(e)}")
 
-# Construir la URL de conexión manualmente
+db_config = get_db_config()
 app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://{MYSQL_CREDENTIALS['user']}:{MYSQL_CREDENTIALS['password']}"
-    f"@{MYSQL_CREDENTIALS['host']}:{MYSQL_CREDENTIALS['port']}"
-    f"/{MYSQL_CREDENTIALS['database']}"
+    f"mysql+pymysql://{db_config['user']}:{db_config['password']}"
+    f"@{db_config['host']}:{db_config['port']}"
+    f"/{db_config['database']}?"
+    f"charset=utf8mb4&ssl_ca={db_config['ssl']['ssl']['ca']}"
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
+    'pool_timeout': 30,
     'pool_size': 5,
     'max_overflow': 10
 }
