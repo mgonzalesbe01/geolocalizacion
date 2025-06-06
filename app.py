@@ -57,14 +57,21 @@ def home():
 def ping():
     return "pong"
 
-@app.route('/test-db')
-def test_db():
+@app.route('/health-check')
+def health_check():
     try:
+        # Verificar conexión a DB
         db.session.execute('SELECT 1')
-        return "Conexión exitosa a la base de datos"
+        return jsonify({
+            'status': 'healthy',
+            'db_connection': 'ok',
+            'app': 'running'
+        })
     except Exception as e:
-        return f"Error de conexión: {str(e)}"
-
+        return jsonify({
+            'status': 'error',
+            'db_error': str(e)
+        }), 500
 @app.route('/crear-tablas')
 def crear_tablas():
     try:
