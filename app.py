@@ -5,6 +5,8 @@ import random
 import string
 import os
 import pymysql
+import logging
+app.logger.setLevel(logging.DEBUG)
 
 # Para usar PyMySQL como motor
 pymysql.install_as_MySQLdb()
@@ -14,14 +16,14 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 
 # Configuración de la base de datos
-db_url = os.environ.get("DATABASE_URL", "sqlite:///fallback.db")
+db_url = os.environ.get("MYSQL_URL", "sqlite:///local.db")
+
 if db_url.startswith("mysql://") and not db_url.startswith("mysql+pymysql://"):
     db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
 # Modelos
