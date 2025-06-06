@@ -20,7 +20,7 @@ def get_database_url():
         return "sqlite:///local.db"  # Fallback para desarrollo
 
     if db_url.startswith("mysql://"):
-        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+        db_url = db_url.replace("mysql://", "mysql+mariadb://", 1)
 
     return db_url
 
