@@ -37,12 +37,15 @@ def mapa():
     return render_template('mapa.html')
 
 @app.route('/<string:codigo>')
-def dispositivo(codigo):
-    disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    if not disp:
-        disp = Dispositivo(codigo=codigo)
-        db.session.add(disp)
+def mostrar_pagina(codigo):
+    dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
+    
+    # Si no existe, créalo ahora
+    if not dispositivo:
+        dispositivo = Dispositivo(codigo=codigo)
+        db.session.add(dispositivo)
         db.session.commit()
+    
     return render_template('index.html', codigo=codigo)
 
 @app.route('/actualizar', methods=['POST'])
@@ -77,7 +80,7 @@ def api_ubicaciones():
                 'precision': d.precision
             }
     return jsonify(data)
-
+    
 @app.route('/generar-enlace')
 def generar_enlace():
     # Genera un código aleatorio de 8 caracteres
@@ -92,6 +95,23 @@ def generar_enlace():
     return jsonify({
         'enlace': f'https://tu-app.onrender.com/{codigo}' 
     })
+
+@app.route('/registrar-dispositivo', methods=['POST'])
+@login_required
+def registrar_dispositivo():
+    alias = request.form.get('alias')
+    codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    
+    nuevo = Dispositivo(codigo=codigo, alias=alias, usuario_id=current_user.id)
+    db.session.add(nuevo)
+    db.session.commit()
+    
+    return jsonify({'enlace': f'https://{request.host}/{codigo}'}) 
+
+@app.route('/codigos')
+def ver_codigos():
+    codigos = [d.codigo for d in Dispositivo.query.all()]
+    return jsonify({'codigos': codigos})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
