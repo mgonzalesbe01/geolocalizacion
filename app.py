@@ -16,13 +16,26 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración de la base de datos
-db_url = os.environ.get("MYSQL_URL", "sqlite:///local.db")
-if db_url.startswith("mysql://") and not db_url.startswith("mysql+pymysql://"):
-    db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+def get_database_url():
+    # 1. Intenta obtener la URL de Railway
+    db_url = os.environ.get("DATABASE_URL")
+    
+    # 2. Si no existe, prueba con variables alternativas
+    if not db_url:
+        db_url = os.environ.get("MYSQL_URL") or os.environ.get("MYSQLDATABASE_URL")
+    
+    # 3. Si sigue sin estar, muestra un error claro
+    if not db_url:
+        print("¡ADVERTENCIA! Usando SQLite local - DATABASE_URL no configurada")
+        return "sqlite:///local.db"
+    
+    # Asegura el formato correcto para MySQL
+    if db_url.startswith("mysql://"):
+        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+    
+    return db_url
 
-app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
@@ -55,6 +68,25 @@ with app.app_context():
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+@app.route('/db-verify')
+def db_verify():
+    db_url = app.config['SQLALCHEMY_DATABASE_URI']
+    try:
+        with db.engine.connect() as conn:
+            conn.execute("SELECT 1")
+        return jsonify({
+            "status": "success",
+            "database": "MySQL" if "mysql" in db_url else "SQLite",
+            "url": db_url,
+            "tables": db.engine.table_names()
+        })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e),
+            "current_url": db_url
+        }), 500
 
 @app.route('/db-status')
 def db_status():
