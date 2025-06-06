@@ -6,73 +6,62 @@ import string
 import os
 import pymysql
 from werkzeug.middleware.proxy_fix import ProxyFix
-import time  # Añade esta línea con los otros imports
+import time
 from urllib.parse import urlparse
 
-# Primero: Crear la aplicación Flask
+# Inicialización de la aplicación
 app = Flask(__name__)
-
-# Segundo: Configurar la clave secreta
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# Tercero: Inicializar SQLAlchemy (sin configurar URL todavía)
-db = SQLAlchemy()
+# =============================================
+# CONFIGURACIÓN MANUAL DE LA BASE DE DATOS MYSQL
+# =============================================
 
-# Cuarto: Definir tus modelos aquí
-class Usuario(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), unique=True, nullable=False)
-    password = db.Column(db.String(200), nullable=False)
+# Obtener credenciales de las variables de entorno
+MYSQL_CREDENTIALS = {
+    'user': os.environ.get('MYSQLUSER', 'root'),
+    'password': os.environ.get('MYSQLPASSWORD'),  # Sin valor por defecto
+    'host': os.environ.get('MYSQLHOST', 'containers.railway.app'),  # Dominio público
+    'port': os.environ.get('MYSQLPORT', '3306'),
+    'database': os.environ.get('MYSQLDATABASE', 'railway')
+}
 
-class Dispositivo(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(8), unique=True, nullable=False)
-    # ... otros campos
+# Construir la URL de conexión manualmente
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f"mysql+pymysql://{MYSQL_CREDENTIALS['user']}:{MYSQL_CREDENTIALS['password']}"
+    f"@{MYSQL_CREDENTIALS['host']}:{MYSQL_CREDENTIALS['port']}"
+    f"/{MYSQL_CREDENTIALS['database']}"
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
+    'pool_size': 5,
+    'max_overflow': 10
+}
 
-# Quinto: Función para configurar la base de datos
-def configure_database():
-    # Obtener URL de conexión
-    db_url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
-    
-    if db_url:
-        if db_url.startswith('mysql://'):
-            db_url = db_url.replace('mysql://', 'mysql+pymysql://', 1)
-        app.config['SQLALCHEMY_DATABASE_URI'] = db_url
-    else:
-        app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///local.db'
-        print("⚠️ Usando SQLite local (MYSQL_URL no encontrada)")
-    
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-    
-    # Inicializar la aplicación con la base de datos
-    db.init_app(app)
-    
-    # Crear tablas si no existen
-    with app.app_context():
-        try:
-            db.create_all()
-            print("✅ Tablas creadas exitosamente")
-        except Exception as e:
-            print(f"❌ Error al crear tablas: {str(e)}")
+# =============================================
+# INICIALIZACIÓN DE EXTENSIONES
+# =============================================
 
-# Sexto: Configurar e inicializar la base de datos
-configure_database()
-
-# El resto de tu aplicación (rutas, etc.) viene después
-@app.route('/')
-def home():
-    return "¡Aplicación funcionando!"
-
-# Inicializa SQLAlchemy
 db = SQLAlchemy(app)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
 
-# Modelos
+# =============================================
+# MODELOS DE BASE DE DATOS
+# =============================================
+
 class Usuario(UserMixin, db.Model):
+    __tablename__ = 'usuario'
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    dispositivos = db.relationship('Dispositivo', backref='usuario', lazy=True)
 
 class Dispositivo(db.Model):
+    __tablename__ = 'dispositivo'
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(8), unique=True, nullable=False)
     alias = db.Column(db.String(100))
@@ -80,74 +69,101 @@ class Dispositivo(db.Model):
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
+    ultima_actualizacion = db.Column(db.DateTime, default=db.func.current_timestamp(), 
+                                   onupdate=db.func.current_timestamp())
 
-# Justo después de definir tus modelos
-with app.app_context():
+# =============================================
+# INICIALIZACIÓN DE LA BASE DE DATOS
+# =============================================
+
+def initialize_database():
+    with app.app_context():
+        try:
+            # Verificar conexión
+            db.engine.connect()
+            print("✅ Conexión a MySQL establecida correctamente")
+            
+            # Crear tablas si no existen
+            db.create_all()
+            print("✅ Tablas creadas/verificadas correctamente")
+            
+            # Verificar tablas existentes
+            inspector = db.inspect(db.engine)
+            print("📊 Tablas existentes:", inspector.get_table_names())
+            
+        except Exception as e:
+            print(f"❌ Error al inicializar la base de datos: {str(e)}")
+            # Opcional: Puedes agregar aquí un fallback a SQLite si lo deseas
+            raise RuntimeError("No se pudo conectar a la base de datos MySQL")
+
+# Llamar a la inicialización al arrancar
+initialize_database()
+
+# =============================================
+# RUTAS DE VERIFICACIÓN
+# =============================================
+
+@app.route('/db-info')
+def db_info():
+    """Endpoint para verificar la conexión a la base de datos"""
     try:
-        print("Intentando crear tablas...")
-        db.create_all()
-        print("Tablas creadas exitosamente!")
-    except Exception as e:
-        print(f"Error al crear tablas: {str(e)}")
-
-# Configura Flask-Login
-login_manager = LoginManager()
-login_manager.init_app(app)
-login_manager.login_view = 'login'
-
-@app.route('/db-config')
-def db_config():
-    db_url = app.config['SQLALCHEMY_DATABASE_URI']
-    return jsonify({
-        "database": "MySQL" if "mysql" in db_url else "PostgreSQL" if "postgresql" in db_url else "SQLite",
-        "url": db_url,
-        "is_railway": "railway" in db_url,
-        "variables": dict(os.environ)
-    })
-
-@app.route('/db-check')
-def db_check():
-    try:
-        db.session.execute("SELECT 1")
+        # Obtener información de la conexión
+        db.session.execute('SELECT 1')
+        db_url = app.config['SQLALCHEMY_DATABASE_URI']
+        
+        # Obtener estadísticas de tablas
+        usuarios = Usuario.query.count()
+        dispositivos = Dispositivo.query.count()
+        
         return jsonify({
             "status": "success",
             "database": "MySQL",
-            "url": app.config['SQLALCHEMY_DATABASE_URI'],
-            "tables": db.engine.table_names()
+            "url": db_url,
+            "tables": db.engine.table_names(),
+            "stats": {
+                "usuarios": usuarios,
+                "dispositivos": dispositivos
+            }
         })
     except Exception as e:
         return jsonify({
             "status": "error",
             "error": str(e),
-            "current_url": app.config.get('SQLALCHEMY_DATABASE_URI'),
-            "available_vars": {k: v for k, v in os.environ.items() if 'URL' in k or 'DB' in k}
+            "config": {
+                "db_url": app.config.get('SQLALCHEMY_DATABASE_URI'),
+                "env_vars": {k: v for k, v in os.environ.items() if 'MYSQL' in k}
+            }
         }), 500
 
-# Configuración de timeout para Flask
-@app.before_request
-def handle_timeout():
-    from flask import request
-    request.start_time = time.time()  # Ahora time está importado
-
-@app.after_request
-def log_request_time(response):
-    from flask import request
-    try:
-        duration = time.time() - getattr(request, 'start_time', time.time())
-        if duration > 5:
-            app.logger.warning(f'Request took {duration:.2f}s: {request.path}')
-    except Exception as e:
-        app.logger.error(f'Error logging request time: {str(e)}')
-    return response
+# =============================================
+# RUTAS PRINCIPALES (Mantén tus rutas existentes)
+# =============================================
 
 @login_manager.user_loader
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
-# Rutas públicas
 @app.route('/')
 def home():
     return redirect(url_for('login'))
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        password = request.form.get('password')
+
+        if not nombre or not password:
+            return "Faltan credenciales", 400
+
+        usuario = Usuario.query.filter_by(nombre=nombre).first()
+
+        if usuario and usuario.password == password:
+            login_user(usuario)
+            return redirect(url_for('dashboard'))
+        return "Credenciales incorrectas", 401
+
+    return render_template('login.html')  # Se eliminó el paréntesis extra aquí
 
 @app.route('/ping')
 def ping():
@@ -221,26 +237,6 @@ def list_routes():
 def dashboard():  # Cambia el nombre de la función para ser más explícito
     return render_template('dashboard.html', usuario=current_user)
 
-# Ruta de inicio de sesión
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        nombre = request.form.get('nombre')
-        password = request.form.get('password')
-
-        if not nombre or not password:
-            return "Faltan credenciales", 400
-
-        usuario = Usuario.query.filter_by(nombre=nombre).first()
-
-        if not usuario or usuario.password != password:
-            return "Credenciales incorrectas", 401
-
-        login_user(usuario)
-        return redirect(url_for('dashboard'))
-
-    return render_template('login.html')
-
 # Ruta para generar dispositivos únicos
 @app.route('/registrar-dispositivo', methods=['POST'])
 @login_required
@@ -302,4 +298,5 @@ def favicon():
 
 # Iniciar en modo desarrollo local
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
