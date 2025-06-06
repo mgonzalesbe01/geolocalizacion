@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 from flask_sqlalchemy import SQLAlchemy
 import random
 import string
@@ -40,29 +40,30 @@ def mapa():
 def dispositivo(codigo):
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
     if not disp:
-        # Si no existe, crearlo
         disp = Dispositivo(codigo=codigo)
         db.session.add(disp)
         db.session.commit()
-
     return render_template('index.html', codigo=codigo)
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
-    codigo = request.form.get('codigo')
-    lat = request.form.get('latitud')
-    lon = request.form.get('longitud')
-    precision = request.form.get('precision')
+    try:
+        codigo = request.form.get('codigo')
+        lat = request.form.get('latitud')
+        lon = request.form.get('longitud')
+        precision = request.form.get('precision')
 
-    disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    if disp and lat and lon:
-        disp.lat = float(lat)
-        disp.lon = float(lon)
-        disp.precision = float(precision) if precision else None
-        db.session.commit()
-        return jsonify({'status': 'ok'})
-
-    return jsonify({'status': 'error'}), 400
+        disp = Dispositivo.query.filter_by(codigo=codigo).first()
+        if disp and lat and lon:
+            disp.lat = float(lat)
+            disp.lon = float(lon)
+            disp.precision = float(precision) if precision else None
+            db.session.commit()
+            return jsonify({'status': 'ok'})
+        return jsonify({'status': 'error'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/ubicaciones')
 def api_ubicaciones():
