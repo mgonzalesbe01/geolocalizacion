@@ -74,6 +74,16 @@ def db_status():
             "error": str(e)
         }), 500
 
+@app.route('/db-info')
+def db_info():
+    db_url = app.config['SQLALCHEMY_DATABASE_URI']
+    db_type = "MySQL" if "mysql" in db_url.lower() else "PostgreSQL" if "postgresql" in db_url.lower() else "SQLite"
+    return jsonify({
+        "database_type": db_type,
+        "database_url": db_url,
+        "tables": db.engine.table_names()
+    })
+
 # Configuración de timeout para Flask
 @app.before_request
 def handle_timeout():
