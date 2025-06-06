@@ -35,8 +35,7 @@
             enviarUbicacion(lat, lon, accuracy);
           },
           (error) => {
-            document.body.innerText =
-              "Error al obtener ubicación: " + error.message;
+            console.error("Error al obtener ubicación:", error.message);
           },
           {
             enableHighAccuracy: true,
@@ -51,6 +50,6 @@
   </head>
   <body>
     <h2>Compartiendo tu ubicación...</h2>
-    <p>Ejemplo: {{ codigo }}</p>
+    <p>Código: {{ codigo }}</p>
   </body>
 </html>

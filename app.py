@@ -78,6 +78,21 @@ def api_ubicaciones():
             }
     return jsonify(data)
 
+@app.route('/generar-enlace')
+def generar_enlace():
+    # Genera un código aleatorio de 8 caracteres
+    codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
+    
+    # Guarda el código en la base de datos (solo para tener registro)
+    nuevo = Dispositivo(codigo=codigo)
+    db.session.add(nuevo)
+    db.session.commit()
+
+    # Devuelve el enlace completo
+    return jsonify({
+        'enlace': f'https://tu-app.onrender.com/{codigo}' 
+    })
+
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=True)

@@ -3,7 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <title>Mapa en Vivo</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -34,13 +33,22 @@
         Object.values(marcadores).forEach((marker) => map.removeLayer(marker));
 
         for (const [codigo, coords] of Object.entries(data)) {
-          marcadores[codigo] = L.marker([coords.lat, coords.lon])
-            .addTo(map)
-            .bindPopup(
-              `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat.toFixed(
-                6
-              )}<br><b>Lon:</b> ${coords.lon.toFixed(6)}`
-            );
+          if (coords.lat && coords.lon) {
+            marcadores[codigo] = L.marker([coords.lat, coords.lon])
+              .addTo(map)
+              .bindPopup(
+                `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat.toFixed(
+                  6
+                )}<br><b>Lon:</b> ${coords.lon.toFixed(
+                  6
+                )}<br><b>Precisión:</b> ±${coords.precision || 0} m`
+              );
+          }
+        }
+
+        if (Object.keys(data).length > 0) {
+          const first = Object.values(data)[0];
+          map.setView([first.lat, first.lon], 16);
         }
       }
 
