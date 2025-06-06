@@ -5,42 +5,36 @@ import random
 import string
 import os
 import pymysql
-import logging
 
-
-# Para usar PyMySQL como motor
+# Inicializa PyMySQL
 pymysql.install_as_MySQLdb()
 
 # Inicializa Flask
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
-app.logger.setLevel(logging.DEBUG)
 
 # Configuración de la base de datos
 db_url = os.environ.get("MYSQL_URL", "sqlite:///local.db")
-
 if db_url.startswith("mysql://") and not db_url.startswith("mysql+pymysql://"):
     db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
 # Modelos
 class Usuario(UserMixin, db.Model):
-    __tablename__ = 'usuario'
     id = db.Column(db.Integer, primary_key=True)
-    nombre = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    nombre = db.Column(db.String(100), unique=True, nullable=False)
     password = db.Column(db.String(200), nullable=False)
 
 class Dispositivo(db.Model):
-    __tablename__ = 'dispositivo'
     id = db.Column(db.Integer, primary_key=True)
-    codigo = db.Column(db.String(8), unique=True, nullable=False, index=True)
+    codigo = db.Column(db.String(8), unique=True, nullable=False)
     alias = db.Column(db.String(100))
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-    usuario = db.relationship('Usuario', backref='dispositivos')
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
