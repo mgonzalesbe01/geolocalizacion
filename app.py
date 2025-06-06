@@ -68,22 +68,29 @@ def recibir_ubicacion(codigo):
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
-    """Recibe la ubicación del dispositivo"""
-    codigo = request.form.get('codigo')
-    lat = request.form.get('latitud')
-    lon = request.form.get('longitud')
-    precision = request.form.get('precision')
+    try:
+        codigo = request.form.get('codigo')
+        lat = request.form.get('latitud')
+        lon = request.form.get('longitud')
+        precision = request.form.get('precision')
 
-    disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    if disp and lat and lon:
+        disp = Dispositivo.query.filter_by(codigo=codigo).first()
+        if not disp:
+            return jsonify({'status': 'error', 'message': 'Código no encontrado'}), 404
+
+        if not lat or not lon:
+            return jsonify({'status': 'error', 'message': 'Faltan coordenadas'}), 400
+
         disp.lat = float(lat)
         disp.lon = float(lon)
         disp.precision = float(precision) if precision else None
-        disp.ultima_actualizacion = time.time()
         db.session.commit()
+
         return jsonify({'status': 'ok'})
     
-    return jsonify({'status': 'error'}), 400
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/ubicaciones')
 def api_ubicaciones():
