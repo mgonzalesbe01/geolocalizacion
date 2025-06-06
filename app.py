@@ -6,6 +6,7 @@ import string
 import os
 import pymysql
 from werkzeug.middleware.proxy_fix import ProxyFix
+import time  # Añade esta línea con los otros imports
 
 # Inicializa PyMySQL
 pymysql.install_as_MySQLdb()
@@ -50,14 +51,17 @@ login_manager.login_view = 'login'
 @app.before_request
 def handle_timeout():
     from flask import request
-    request.start_time = time.time()
+    request.start_time = time.time()  # Ahora time está importado
 
 @app.after_request
 def log_request_time(response):
     from flask import request
-    duration = time.time() - request.start_time
-    if duration > 5:  # Log solo si tarda más de 5 segundos
-        app.logger.warning(f'Request took {duration:.2f}s: {request.path}')
+    try:
+        duration = time.time() - getattr(request, 'start_time', time.time())
+        if duration > 5:
+            app.logger.warning(f'Request took {duration:.2f}s: {request.path}')
+    except Exception as e:
+        app.logger.error(f'Error logging request time: {str(e)}')
     return response
 
 @login_manager.user_loader
@@ -71,7 +75,20 @@ def home():
 
 @app.route('/ping')
 def ping():
-    return 'pong', 200
+    try:
+        # Verificar conexión a DB
+        db.session.execute('SELECT 1')
+        return jsonify({
+            'status': 'pong',
+            'database': 'connected',
+            'timestamp': time.time()
+        })
+    except Exception as e:
+        return jsonify({
+            'status': 'pong',
+            'database': 'error',
+            'error': str(e)
+        }), 500
 
 @app.route('/health-check')
 def health_check():
