@@ -2,113 +2,96 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Mapa en Vivo</title>
-    <link
-      rel="stylesheet"
-      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
+    <title>Dashboard - Geolocalización</title>
     <style>
       body {
         font-family: Arial, sans-serif;
-        margin: 0;
+        margin: 20px;
+      }
+      h2 {
+        color: #333;
+      }
+      form {
+        margin-bottom: 20px;
+      }
+      input[type="text"] {
+        padding: 10px;
+        width: 250px;
+      }
+      button {
+        padding: 10px 15px;
+        background-color: #2c3e50;
+        color: white;
+        border: none;
+        cursor: pointer;
+      }
+      ul {
+        list-style: none;
+        padding-left: 0;
+      }
+      li {
         display: flex;
-        height: 100vh;
-      }
-
-      #opciones {
-        width: 300px;
-        padding: 20px;
-        border-right: 1px solid #ccc;
-        overflow-y: auto;
-      }
-
-      #mapa {
-        flex-grow: 1;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px solid #eee;
       }
     </style>
   </head>
   <body>
-    <div id="opciones">
-      <h3>Generar Nuevo Enlace</h3>
-      <form id="form-generar">
-        <input
-          type="text"
-          name="alias"
-          placeholder="Alias (ej: 'Auto', 'Teléfono Juan')"
-          required
-        />
-        <button type="submit">Generar Enlace</button>
-      </form>
+    <h2>Generar Nuevo Enlace</h2>
+    <form id="form-generar">
+      <input
+        type="text"
+        name="alias"
+        placeholder="Alias (ej: 'Auto', 'Teléfono Juan')"
+        required
+      />
+      <button type="submit">Generar Enlace</button>
+    </form>
 
-      <h3>Mis Dispositivos</h3>
-      <ul id="lista-dispositivos"></ul>
+    <h3>Mis Dispositivos</h3>
+    <ul id="lista-dispositivos"></ul>
 
-      <p>
-        <small
-          >PIN: Al hacer clic en un dispositivo, solo se mostrará su
-          ubicación</small
-        >
-      </p>
-    </div>
-
-    <div id="mapa"></div>
-
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const map = L.map("mapa").setView([0, 0], 2);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map
-      );
+      const lista = document.getElementById("lista-dispositivos");
 
-      const marcadores = {};
-
-      // Función para cargar dispositivos
+      // Función para cargar dispositivos desde /api/ubicaciones
       async function cargarDispositivos() {
-        const res = await fetch("/api/ubicaciones");
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/ubicaciones");
+          const data = await res.json();
 
-        document.getElementById("lista-dispositivos").innerHTML = "";
-        Object.entries(data).forEach(([codigo, coords]) => {
-          const li = document.createElement("li");
+          lista.innerHTML = "";
+          for (const [codigo, coords] of Object.entries(data)) {
+            const li = document.createElement("li");
 
-          const link = document.createElement("a");
-          link.href = "#";
-          link.textContent = coords.alias || codigo;
+            const link = document.createElement("a");
+            link.href = "#";
+            link.textContent = coords.alias || codigo;
 
-          const eliminarBtn = document.createElement("button");
-          eliminarBtn.textContent = "Eliminar";
-          eliminarBtn.style.marginLeft = "10px";
+            const eliminarBtn = document.createElement("button");
+            eliminarBtn.textContent = "Eliminar";
+            eliminarBtn.style.marginLeft = "10px";
 
-          link.onclick = () => {
-            // Limpiar marcadores anteriores
-            Object.values(marcadores).forEach((marker) =>
-              map.removeLayer(marker)
-            );
+            link.onclick = () => {
+              window.location.href = `/${codigo}`;
+            };
 
-            if (coords.lat && coords.lon) {
-              marcadores[codigo] = L.marker([coords.lat, coords.lon])
-                .addTo(map)
-                .bindPopup(
-                  `<b>${coords.alias || codigo}</b><br>Lat: ${
-                    coords.lat
-                  }<br>Lon: ${coords.lon}`
-                );
-              map.setView([coords.lat, coords.lon], 16);
-            }
-          };
+            eliminarBtn.onclick = () => {
+              if (confirm("¿Eliminar este dispositivo?")) {
+                fetch(`/eliminar/${codigo}`, { method: "GET" })
+                  .then(() => location.reload())
+                  .catch((err) => alert("Error al eliminar"));
+              }
+            };
 
-          eliminarBtn.onclick = () => {
-            if (confirm("¿Eliminar este dispositivo?")) {
-              fetch(`/eliminar/${codigo}`, { method: "GET" })
-                .then(() => cargarDispositivos())
-                .catch((err) => alert("Error al eliminar"));
-            }
-          };
-
-          li.appendChild(link);
-          li.appendChild(eliminarBtn);
-          document.getElementById("lista-dispositivos").appendChild(li);
-        });
+            li.appendChild(link);
+            li.appendChild(eliminarBtn);
+            lista.appendChild(li);
+          }
+        } catch (err) {
+          console.error("Error al cargar dispositivos:", err);
+        }
       }
 
       // Generar nuevo dispositivo
@@ -118,7 +101,7 @@
           e.preventDefault();
           const alias = e.target[0].value.trim();
 
-          const res = await fetch("/generar-enlace", {
+          const res = await fetch("/registrar-dispositivo", {
             method: "POST",
             headers: {
               "Content-Type": "application/x-www-form-urlencoded",
@@ -134,7 +117,7 @@
           cargarDispositivos();
         });
 
-      // Actualizar marcadores periódicamente
+      // Recargar dispositivos al inicio y cada 5 segundos
       setInterval(cargarDispositivos, 5000);
       cargarDispositivos();
     </script>
