@@ -44,11 +44,9 @@ def mapa():
 
 @app.route('/generar-enlace', methods=['POST'])
 def generar_enlace():
-    """Genera un código aleatorio y devuelve el enlace"""
     alias = request.form.get('alias')
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
     
-    # Guarda el dispositivo en la base de datos
     nuevo = Dispositivo(codigo=codigo, alias=alias)
     db.session.add(nuevo)
     db.session.commit()
@@ -59,12 +57,11 @@ def generar_enlace():
         'alias': alias or codigo
     })
 
+
 @app.route('/<string:codigo>')
 def recibir_ubicacion(codigo):
-    """Página que pide permiso de ubicación"""
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
     if not disp:
-        # Si no existe, créalo ahora
         disp = Dispositivo(codigo=codigo)
         db.session.add(disp)
         db.session.commit()
@@ -73,29 +70,21 @@ def recibir_ubicacion(codigo):
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
-    try:
-        codigo = request.form.get('codigo')
-        lat = request.form.get('latitud')
-        lon = request.form.get('longitud')
-        precision = request.form.get('precision')
+    codigo = request.form.get('codigo')
+    lat = request.form.get('latitud')
+    lon = request.form.get('longitud')
+    precision = request.form.get('precision')
 
-        disp = Dispositivo.query.filter_by(codigo=codigo).first()
-        if not disp:
-            return jsonify({'status': 'error', 'message': 'Código no encontrado'}), 404
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
 
-        if not lat or not lon:
-            return jsonify({'status': 'error', 'message': 'Faltan coordenadas'}), 400
-
+    if disp and lat and lon:
         disp.lat = float(lat)
         disp.lon = float(lon)
         disp.precision = float(precision) if precision else None
         db.session.commit()
-
         return jsonify({'status': 'ok'})
-    
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    return jsonify({'status': 'error', 'message': 'Datos incompletos'}), 400
 
 @app.route('/log')
 def log_datos():
@@ -110,10 +99,9 @@ def log_datos():
 @app.route('/eliminar/<string:codigo>')
 def eliminar_dispositivo(codigo):
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
-
     if not disp:
         return jsonify({'status': 'error', 'mensaje': 'Código no encontrado'}), 404
-
+    
     try:
         db.session.delete(disp)
         db.session.commit()
@@ -131,7 +119,6 @@ def api_ubicaciones():
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'precision': d.precision,
                 'alias': d.alias or d.codigo
             }
     return jsonify(data)

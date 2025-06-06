@@ -30,12 +30,12 @@
           (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            const precision = position.coords.accuracy;
+            const accuracy = position.coords.accuracy;
 
-            enviarUbicacion(lat, lon, precision);
+            enviarUbicacion(lat, lon, accuracy);
           },
           (error) => {
-            console.error("Error al obtener ubicación:", error.message);
+            console.error("Error de geolocalización:", error.message);
           },
           {
             enableHighAccuracy: true,
