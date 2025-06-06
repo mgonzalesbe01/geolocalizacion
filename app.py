@@ -42,10 +42,37 @@ class Dispositivo(db.Model):
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
 
+# Justo después de definir tus modelos
+with app.app_context():
+    try:
+        print("Intentando crear tablas...")
+        db.create_all()
+        print("Tablas creadas exitosamente!")
+    except Exception as e:
+        print(f"Error al crear tablas: {str(e)}")
+
 # Configura Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
+
+@app.route('/db-status')
+def db_status():
+    try:
+        with app.app_context():
+            # Verifica si las tablas existen
+            inspector = db.inspect(db.engine)
+            tables = inspector.get_table_names()
+            return jsonify({
+                "status": "success",
+                "tables": tables,
+                "database_url": app.config['SQLALCHEMY_DATABASE_URI']
+            })
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "error": str(e)
+        }), 500
 
 # Configuración de timeout para Flask
 @app.before_request
@@ -105,13 +132,7 @@ def health_check():
             'status': 'error',
             'db_error': str(e)
         }), 500
-@app.route('/crear-tablas')
-def crear_tablas():
-    try:
-        db.create_all()
-        return "Tablas creadas exitosamente"
-    except Exception as e:
-        return f"Error al crear tablas: {str(e)}"
+
     
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -121,20 +142,19 @@ def register():
             password = request.form['password']
 
             if Usuario.query.filter_by(nombre=nombre).first():
-                return render_template('register.html', error="Nombre de usuario ya existe")
+                return "Nombre de usuario ya existe", 409
 
             nuevo_usuario = Usuario(nombre=nombre, password=password)
             db.session.add(nuevo_usuario)
             db.session.commit()
-
+            
             login_user(nuevo_usuario)
             return redirect(url_for('dashboard'))
 
         except Exception as e:
             db.session.rollback()
-            return render_template('register.html', error=f"Error: {str(e)}")
+            return f"Error al registrar: {str(e)}", 500
 
-    # Método GET - solo mostrar el formulario
     return render_template('register.html')
 
 # Ruta de inicio de sesión
