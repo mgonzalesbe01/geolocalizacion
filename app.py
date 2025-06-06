@@ -13,11 +13,6 @@ from urllib.parse import urlparse
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# =============================================
-# CONFIGURACIÓN MANUAL DE LA BASE DE DATOS MYSQL
-# =============================================
-
-# Obtener credenciales de las variables de entorno
 # Configuración robusta para MySQL en Railway
 def get_db_config():
     try:
