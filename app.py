@@ -71,7 +71,7 @@ def home():
 
 @app.route('/ping')
 def ping():
-    return "pong"
+    return 'pong', 200
 
 @app.route('/health-check')
 def health_check():
