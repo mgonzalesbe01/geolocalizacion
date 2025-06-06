@@ -3,21 +3,38 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 import random
 import string
+import os
+import pymysql
 
+# Inicializa MySQL para Python
+pymysql.install_as_MySQLdb()
+
+# Inicializa Flask
 app = Flask(__name__)
-app.secret_key = 'dev-secret-key-123'
+app.secret_key = 'tu_clave_secreta'
 
-# Configuración de SQLite (para pruebas)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///memory'
+# Configuración de la base de datos
+def get_database_url():
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        return "sqlite:///local.db"  # Fallback para desarrollo
+
+    if db_url.startswith("mysql://"):
+        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
+
+    return db_url
+
+app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'connect_args': {'check_same_thread': False}
+    'pool_pre_ping': True,
+    'pool_recycle': 300,
 }
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
-# Modelos simples
+# Modelos
 class Usuario(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nombre = db.Column(db.String(100), unique=True, nullable=False)
@@ -28,11 +45,12 @@ class Dispositivo(db.Model):
     codigo = db.Column(db.String(8), unique=True, nullable=False)
     alias = db.Column(db.String(100))
     usuario_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
+    usuario = db.relationship('Usuario', backref='dispositivos')
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
 
-# Configuración de Flask-Login
+# Configura Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -41,11 +59,7 @@ login_manager.login_view = 'login'
 def load_user(user_id):
     return Usuario.query.get(int(user_id))
 
-# Crear tablas al iniciar
-with app.app_context():
-    db.create_all()
-
-# Rutas básicas
+# Rutas comunes
 @app.route('/')
 def home():
     return redirect(url_for('login'))
@@ -58,33 +72,21 @@ def login():
 
         usuario = Usuario.query.filter_by(nombre=nombre).first()
 
-        if not usuario:
-            nuevo_usuario = Usuario(nombre=nombre, password=password)
-            db.session.add(nuevo_usuario)
-            db.session.commit()
-            login_user(nuevo_usuario)
-            return redirect(url_for('dashboard'))
+        if not usuario or usuario.password != password:
+            return "Credenciales incorrectas", 401
 
-        if usuario.password == password:
-            login_user(usuario)
-            return redirect(url_for('dashboard'))
-
-        return "Credenciales incorrectas", 401
+        login_user(usuario)
+        return redirect(url_for('dashboard'))
 
     return render_template('login.html')
-
-@app.route('/dashboard')
-@login_required
-def dashboard():
-    return render_template('dashboard.html', usuario=current_user)
 
 @app.route('/registrar-dispositivo', methods=['POST'])
 @login_required
 def registrar_dispositivo():
     alias = request.form.get('alias')
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-    dispositivo = Dispositivo(codigo=codigo, alias=alias, usuario_id=current_user.id)
-    db.session.add(dispositivo)
+    nuevo = Dispositivo(codigo=codigo, alias=alias, usuario_id=current_user.id)
+    db.session.add(nuevo)
     db.session.commit()
     return jsonify({'codigo': codigo})
 
@@ -103,6 +105,7 @@ def actualizar_ubicacion():
     precision = request.form.get('precision')
 
     dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
+
     if dispositivo and lat and lon:
         dispositivo.lat = float(lat)
         dispositivo.lon = float(lon)
@@ -122,11 +125,11 @@ def api_ubicaciones():
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'precision': d.precision,
                 'alias': d.alias
             }
     return jsonify(data)
 
-@app.route('/favicon.ico')
-def favicon():
-    return "", 204
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True, host='0.0.0.0', port=5000)
