@@ -20,7 +20,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 # Obtener credenciales de las variables de entorno
 MYSQL_CREDENTIALS = {
     'user': os.environ.get('MYSQLUSER', 'root'),
-    'password': os.environ.get('MYSQLPASSWORD'),  # Sin valor por defecto
+    'password': os.environ.get('MYSQL_ROOT_PASSWORD', ''),  # Sin valor por defecto
     'host': os.environ.get('MYSQLHOST', 'containers.railway.app'),  # Dominio público
     'port': os.environ.get('MYSQLPORT', '3306'),
     'database': os.environ.get('MYSQLDATABASE', 'railway')
