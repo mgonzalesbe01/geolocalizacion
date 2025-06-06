@@ -14,23 +14,11 @@ app = Flask(__name__)
 app.secret_key = 'tu_clave_secreta'
 
 # Configuración de la base de datos
-def get_database_url():
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        return "sqlite:///local.db"
-
-    # Si es mysql://, cámbialo a mysql+pymysql://
-    if db_url.startswith("mysql://"):
-        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
-
-    return db_url
-
-app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
+# Configuración de la base de datos
+db_url = 'mysql+pymysql://usuario:contraseña@host:puerto/nombre_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 300,
-}
+
 
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
