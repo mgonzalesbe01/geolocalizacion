@@ -2,7 +2,7 @@
 {% if error %}
 <div style="color: red">{{ error }}</div>
 {% endif %}
-<form method="post">
+<form method="POST" action="{{ url_for('register') }}">
   <input type="text" name="nombre" placeholder="Usuario" required /><br />
   <input
     type="password"

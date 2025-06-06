@@ -169,7 +169,7 @@ def list_routes():
 
 @app.route('/dashboard')
 @login_required
-def show_dashboard():  # Cambia el nombre de la función para ser más explícito
+def dashboard():  # Cambia el nombre de la función para ser más explícito
     return render_template('dashboard.html', usuario=current_user)
 
 # Ruta de inicio de sesión
