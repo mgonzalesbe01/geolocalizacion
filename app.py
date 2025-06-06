@@ -17,10 +17,11 @@ app.secret_key = 'tu_clave_secreta'
 def get_database_url():
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
-        return "sqlite:///local.db"  # Fallback para desarrollo
+        return "sqlite:///local.db"
 
+    # Si es mysql://, cámbialo a mysql+pymysql://
     if db_url.startswith("mysql://"):
-        db_url = db_url.replace("mysql://", "mysql+mariadb://", 1)
+        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
 
     return db_url
 
