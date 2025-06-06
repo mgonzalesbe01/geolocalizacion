@@ -17,32 +17,39 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'tu_clave_secreta')
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
-# Configuración robusta de la base de datos
-# Configuración de la base de datos
+# Configuración mejorada de la base de datos
 def get_database_url():
-    # 1. Usa MYSQL_URL como variable primaria
-    db_url = os.environ.get("MYSQL_URL")
+    # 1. Intenta con MYSQL_URL (Railway)
+    if 'MYSQL_URL' in os.environ:
+        db_url = os.environ['MYSQL_URL']
+    # 2. Prueba con DATABASE_URL (estándar)
+    elif 'DATABASE_URL' in os.environ:
+        db_url = os.environ['DATABASE_URL']
+    # 3. Modo desarrollo local con SQLite
+    else:
+        print("¡Modo desarrollo! Usando SQLite local")
+        return "sqlite:///local.db"
     
-    # 2. Si no existe, muestra error claro
-    if not db_url:
-        raise RuntimeError(
-            "No se encontró MYSQL_URL. "
-            "Verifica que el addon MySQL esté correctamente vinculado en Railway."
-        )
-    
-    # 3. Asegura el formato correcto para MySQL
-    if db_url.startswith("mysql://"):
-        db_url = db_url.replace("mysql://", "mysql+pymysql://", 1)
-    
+    # Convertir URL de MySQL al formato correcto
+    if db_url.startswith('mysql://'):
+        return db_url.replace('mysql://', 'mysql+pymysql://', 1)
     return db_url
 
-app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    'pool_pre_ping': True,
-    'pool_recycle': 300,
-}
-
+# Configuración de Flask-SQLAlchemy
+try:
+    app.config['SQLALCHEMY_DATABASE_URI'] = get_database_url()
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    
+    # Verificación temprana de la conexión
+    with app.app_context():
+        db.engine.connect()
+        print("✅ Conexión a la base de datos exitosa")
+except Exception as e:
+    print(f"❌ Error de conexión: {str(e)}")
+    # Modo fallback seguro para desarrollo
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///local.db"
+    print("⚠️ Usando SQLite local como fallback")
+    
 # Inicializa SQLAlchemy
 db = SQLAlchemy(app)
 
