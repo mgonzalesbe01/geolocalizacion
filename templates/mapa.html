@@ -30,8 +30,10 @@
         const res = await fetch("/api/ubicaciones");
         const data = await res.json();
 
+        // Eliminar marcadores antiguos
         Object.values(marcadores).forEach((marker) => map.removeLayer(marker));
 
+        // Añadir nuevos marcadores
         for (const [codigo, coords] of Object.entries(data)) {
           if (coords.lat && coords.lon) {
             marcadores[codigo] = L.marker([coords.lat, coords.lon])
@@ -39,13 +41,12 @@
               .bindPopup(
                 `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat.toFixed(
                   6
-                )}<br><b>Lon:</b> ${coords.lon.toFixed(
-                  6
-                )}<br><b>Precisión:</b> ±${coords.precision || 0} m`
+                )}<br><b>Lon:</b> ${coords.lon.toFixed(6)}`
               );
           }
         }
 
+        // Centra el mapa si hay ubicaciones
         if (Object.keys(data).length > 0) {
           const first = Object.values(data)[0];
           map.setView([first.lat, first.lon], 16);

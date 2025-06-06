@@ -35,7 +35,7 @@
             enviarUbicacion(lat, lon, accuracy);
           },
           (error) => {
-            console.error("Error al obtener ubicación:", error.message);
+            alert("Permiso de ubicación denegado");
           },
           {
             enableHighAccuracy: true,
