@@ -2,19 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Compartir Ubicación</title>
-    <style>
-      body {
-        font-family: Arial;
-        text-align: center;
-        padding: 50px;
-      }
-    </style>
-  </head>
-  <body>
-    <h2>Compartiendo tu ubicación...</h2>
-    <p id="status">Esperando permiso...</p>
-
+    <title>Compartiendo Ubicación</title>
     <script>
       const codigo = "{{ codigo }}";
 
@@ -34,8 +22,7 @@
 
       function getLocation() {
         if (!navigator.geolocation) {
-          document.getElementById("status").innerText =
-            "Geolocalización no soportada.";
+          document.body.innerText = "Geolocalización no soportada";
           return;
         }
 
@@ -43,29 +30,13 @@
           (position) => {
             const lat = position.coords.latitude;
             const lon = position.coords.longitude;
-            const precision = position.coords.accuracy;
+            const accuracy = position.coords.accuracy;
 
-            enviarUbicacion(lat, lon, precision);
-            document.getElementById("status").innerText = `Lat: ${lat.toFixed(
-              6
-            )}, Lon: ${lon.toFixed(6)}\nPrecisión: ±${precision.toFixed(2)} m`;
+            enviarUbicacion(lat, lon, accuracy);
           },
           (error) => {
-            let mensaje = "";
-            switch (error.code) {
-              case error.PERMISSION_DENIED:
-                mensaje = "Permiso denegado.";
-                break;
-              case error.POSITION_UNAVAILABLE:
-                mensaje = "Ubicación no disponible.";
-                break;
-              case error.TIMEOUT:
-                mensaje = "Tiempo de espera agotado.";
-                break;
-              default:
-                mensaje = "Error desconocido.";
-            }
-            document.getElementById("status").innerText = mensaje;
+            document.body.innerText =
+              "Error al obtener ubicación: " + error.message;
           },
           {
             enableHighAccuracy: true,
@@ -75,7 +46,11 @@
         );
       }
 
-      getLocation();
+      window.onload = getLocation;
     </script>
+  </head>
+  <body>
+    <h2>Compartiendo tu ubicación...</h2>
+    <p>Ejemplo: {{ codigo }}</p>
   </body>
 </html>

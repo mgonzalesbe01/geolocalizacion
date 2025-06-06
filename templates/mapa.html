@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Mapa en Vivo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+    <style>
+      #map {
+        height: 100vh;
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+      const map = L.map("map").setView([0, 0], 2);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map
+      );
+
+      const marcadores = {};
+
+      async function actualizarMarcadores() {
+        const res = await fetch("/api/ubicaciones");
+        const data = await res.json();
+
+        Object.values(marcadores).forEach((marker) => map.removeLayer(marker));
+
+        for (const [codigo, coords] of Object.entries(data)) {
+          marcadores[codigo] = L.marker([coords.lat, coords.lon])
+            .addTo(map)
+            .bindPopup(
+              `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat.toFixed(
+                6
+              )}<br><b>Lon:</b> ${coords.lon.toFixed(6)}`
+            );
+        }
+      }
+
+      setInterval(actualizarMarcadores, 5000);
+      actualizarMarcadores();
+    </script>
+  </body>
+</html>
