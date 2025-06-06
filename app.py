@@ -9,36 +9,46 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import time
 from urllib.parse import urlparse
 
-# Inicialización de la aplicación
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret-key')
 
-# Configuración robusta para MySQL en Railway
+# Configuración robusta de la base de datos
 def get_db_config():
+    # Intenta obtener las variables de Railway primero
+    railway_db_url = os.environ.get('DATABASE_URL') or os.environ.get('MYSQL_URL')
+    
+    if railway_db_url:
+        # Formato para Railway: mysql://user:password@host:port/dbname
+        if railway_db_url.startswith('mysql://'):
+            railway_db_url = railway_db_url.replace('mysql://', 'mysql+pymysql://', 1)
+        return railway_db_url
+    
+    # Si no hay variables de Railway, intenta con variables individuales
     try:
-        return {
-            'user': os.environ['MYSQLUSER'],
-            'password': os.environ['MYSQLPASSWORD'],
-            'host': os.environ['MYSQLHOST'],
-            'port': os.environ['MYSQLPORT'],
-            'database': os.environ['MYSQLDATABASE'],
-            'ssl': {'ssl': {'ca': '/etc/ssl/cert.pem'}}  # Importante para Railway
+        config = {
+            'user': os.environ.get('MYSQLUSER', 'root'),
+            'password': os.environ.get('MYSQLPASSWORD', ''),
+            'host': os.environ.get('MYSQLHOST', 'containers.railway.app'),
+            'port': os.environ.get('MYSQLPORT', '3306'),
+            'database': os.environ.get('MYSQLDATABASE', 'railway')
         }
-    except KeyError as e:
-        raise RuntimeError(f"Falta variable de entorno: {str(e)}")
+        
+        # Verifica que tenemos al menos las credenciales básicas
+        if not all([config['user'], config['password'], config['host']]):
+            raise ValueError("Faltan credenciales esenciales de MySQL")
+            
+        return f"mysql+pymysql://{config['user']}:{config['password']}@{config['host']}:{config['port']}/{config['database']}"
+    
+    except Exception as e:
+        print(f"⚠️ Advertencia: {str(e)} - Usando SQLite como fallback")
+        return 'sqlite:///local.db'
 
-db_config = get_db_config()
-app.config['SQLALCHEMY_DATABASE_URI'] = (
-    f"mysql+pymysql://{db_config['user']}:{db_config['password']}"
-    f"@{db_config['host']}:{db_config['port']}"
-    f"/{db_config['database']}?"
-    f"charset=utf8mb4&ssl_ca={db_config['ssl']['ssl']['ca']}"
-)
+# Configuración final
+app.config['SQLALCHEMY_DATABASE_URI'] = get_db_config()
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,
     'pool_recycle': 300,
-    'pool_timeout': 30,
     'pool_size': 5,
     'max_overflow': 10
 }
