@@ -13,7 +13,6 @@
         margin: 0;
         display: flex;
         height: 100vh;
-        overflow: hidden;
       }
       #sidebar {
         width: 300px;
@@ -24,7 +23,6 @@
       }
       #mapa {
         flex-grow: 1;
-        height: 100%;
       }
       form input[type="text"] {
         width: 100%;
@@ -43,17 +41,17 @@
         padding: 5px 0;
         border-bottom: 1px solid #eee;
       }
+      .btn-copiar,
+      .btn-eliminar {
+        padding: 5px 10px;
+        cursor: pointer;
+        font-size: 12px;
+        margin-left: 10px;
+      }
       .enlace {
         word-break: break-all;
-        cursor: pointer;
         color: blue;
         text-decoration: underline;
-      }
-      .btn-copiar {
-        margin-left: 10px;
-        padding: 5px 10px;
-        font-size: 12px;
-        cursor: pointer;
       }
     </style>
   </head>
@@ -65,17 +63,17 @@
         <input
           type="text"
           name="alias"
-          placeholder="Alias (ej: 'Auto', 'Teléfono Juan')"
+          placeholder="Alias (ej: Auto)"
           required
         />
         <button type="submit">Generar Enlace</button>
       </form>
 
-      <!-- Lista de mis dispositivos -->
+      <!-- Apartado: Mis Dispositivos -->
       <h3>Mis Dispositivos</h3>
       <ul id="lista-dispositivos"></ul>
 
-      <!-- Apartado para Links generados -->
+      <!-- Apartado: Links Generados -->
       <h3>Links Generados</h3>
       <ul id="lista-links"></ul>
     </div>
@@ -92,95 +90,88 @@
 
       const marcadores = {};
 
-      // Función para cargar dispositivos desde la API
+      // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
-        try {
-          const res = await fetch("/api/dispositivos");
-          const data = await res.json();
+        const res = await fetch("/api/ubicaciones");
+        const data = await res.json();
 
-          const listaDispositivos =
-            document.getElementById("lista-dispositivos");
-          listaDispositivos.innerHTML = ""; // Limpiar antes de recargar
+        const lista = document.getElementById("lista-dispositivos");
+        lista.innerHTML = "";
 
-          data.forEach((d) => {
-            if (d.lat && d.lon) {
-              // Solo muestra dispositivos con ubicación
-              const li = document.createElement("li");
+        Object.entries(data).forEach(([codigo, coords]) => {
+          const li = document.createElement("li");
 
-              const alias = document.createElement("span");
-              alias.textContent = d.alias || d.codigo;
+          const alias = document.createElement("span");
+          alias.textContent = coords.alias || codigo;
 
-              const eliminarBtn = document.createElement("button");
-              eliminarBtn.textContent = "Eliminar";
-              eliminarBtn.className = "btn-eliminar";
+          const eliminarBtn = document.createElement("button");
+          eliminarBtn.textContent = "Eliminar";
+          eliminarBtn.className = "btn-eliminar";
 
-              // Eliminar dispositivo
-              eliminarBtn.onclick = () => {
-                if (confirm("¿Eliminar este dispositivo?")) {
-                  fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
-                    .then(() => location.reload())
-                    .catch((err) => alert("Error al eliminar"));
-                }
-              };
-
-              li.appendChild(alias);
-              li.appendChild(eliminarBtn);
-              listaDispositivos.appendChild(li);
+          eliminarBtn.onclick = () => {
+            if (confirm("¿Eliminar este dispositivo?")) {
+              fetch(`/eliminar/${codigo}`, { method: "DELETE" })
+                .then(() => location.reload())
+                .catch((err) => alert("Error al eliminar"));
             }
-          });
+          };
 
-          // Si hay datos, centra el mapa en el último
-          if (data.length > 0) {
-            const last = data[data.length - 1];
-            if (last.lat && last.lon) {
-              map.setView([last.lat, last.lon], 16);
+          alias.onclick = () => {
+            Object.values(marcadores).forEach((marker) =>
+              map.removeLayer(marker)
+            );
+
+            if (coords.lat && coords.lon) {
+              marcadores[codigo] = L.marker([coords.lat, coords.lon])
+                .addTo(map)
+                .bindPopup(
+                  `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
+                );
+              map.setView([coords.lat, coords.lon], 16);
             }
-          }
-        } catch (err) {
-          console.error("Error al cargar dispositivos:", err);
-        }
+          };
+
+          li.appendChild(alias);
+          li.appendChild(eliminarBtn);
+          lista.appendChild(li);
+        });
       }
 
-      // Cargar links generados
+      // Cargar links generados (sin ubicación aún)
       async function cargarLinksGenerados() {
-        try {
-          const res = await fetch("/api/links-generados");
-          const data = await res.json();
+        const res = await fetch("/api/links-generados");
+        const data = await res.json();
 
-          const listaLinks = document.getElementById("lista-links");
-          listaLinks.innerHTML = ""; // Limpiar antes de recargar
+        const lista = document.getElementById("lista-links");
+        lista.innerHTML = "";
 
-          data.forEach((d) => {
-            const li = document.createElement("li");
+        data.forEach((d) => {
+          const li = document.createElement("li");
 
-            const enlace = document.createElement("p");
-            const url = `https://${window.location.host}/${d.codigo}`;
-            enlace.className = "enlace";
-            enlace.textContent = url;
+          const enlace = document.createElement("p");
+          const url = `https://${window.location.host}/${d.codigo}`;
+          enlace.className = "enlace";
+          enlace.textContent = url;
 
-            const btnCopiar = document.createElement("button");
-            btnCopiar.textContent = "Copiar";
-            btnCopiar.className = "btn-copiar";
+          const btnCopiar = document.createElement("button");
+          btnCopiar.textContent = "Copiar";
+          btnCopiar.className = "btn-copiar";
 
-            // Copiar al portapapeles
-            btnCopiar.onclick = () => {
-              navigator.clipboard
-                .writeText(url)
-                .then(() => {
-                  alert("✅ Enlace copiado al portapapeles");
-                })
-                .catch((err) => {
-                  alert("❌ Error al copiar: " + err.message);
-                });
-            };
+          btnCopiar.onclick = () => {
+            navigator.clipboard
+              .writeText(url)
+              .then(() => {
+                alert("✅ Enlace copiado");
+              })
+              .catch((err) => {
+                alert("❌ Error al copiar: " + err.message);
+              });
+          };
 
-            li.appendChild(enlace);
-            li.appendChild(btnCopiar);
-            listaLinks.appendChild(li);
-          });
-        } catch (err) {
-          console.error("Error al cargar enlaces generados:", err);
-        }
+          li.appendChild(enlace);
+          li.appendChild(btnCopiar);
+          lista.appendChild(li);
+        });
       }
 
       // Generar nuevo dispositivo
@@ -202,12 +193,14 @@
           });
 
           const data = await res.json();
-          cargarLinksGenerados(); // Actualiza la lista de enlaces generados
-          cargarDispositivos(); // Refresca la lista de dispositivos
+          aliasInput.value = "";
+          cargarLinksGenerados(); // Recargar lista de enlaces
+          cargarDispositivos(); // Recargar lista de dispositivos
         });
 
       // Carga inicial y periódica
       setInterval(cargarDispositivos, 5000);
+      setInterval(cargarLinksGenerados, 5000);
       cargarDispositivos();
       cargarLinksGenerados();
     </script>
