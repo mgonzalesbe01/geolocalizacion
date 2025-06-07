@@ -154,128 +154,54 @@
 
       const marcadores = {};
 
-      // Cargar dispositivos con ubicación
+      // Función cargarDispositivos actualizada
       async function cargarDispositivos() {
         try {
           const res = await fetch("/api/dispositivos");
           const data = await res.json();
+          console.log("Datos dispositivos:", data); // Para depuración
 
-          console.log("Datos recibidos:", data);
           const lista = document.getElementById("lista-dispositivos");
-          lista.innerHTML = ""; // Limpiar lista antes de actualizar
-
-          data.forEach((d) => {
-            if (d.codigo === "favicon.ico") return;
-
-            // --- AQUÍ VA EL NUEVO CÓDIGO ---
-            const li = document.createElement("li");
-            li.innerHTML = `
-        <span class="codigo">${d.codigo}</span>
-        <span class="alias">${d.alias || "Sin alias"}</span>
-        <span class="estado ${d.estado}">${
-              d.estado === "activo" ? "✅" : "❌"
-            }</span>
-        <span class="coordenadas">${d.lat ? "📍" : "🚫"}</span>
-        ${
-          d.lat
-            ? `<button class="ver-mapa" data-lat="${d.lat}" data-lon="${d.lon}">Ver</button>`
-            : ""
-        }
-    `;
-
-            // Añade funcionalidad al botón
-            if (d.lat) {
-              li.querySelector(".ver-mapa").addEventListener("click", () => {
-                map.setView([d.lat, d.lon], 15);
-                L.marker([d.lat, d.lon])
-                  .addTo(map)
-                  .bindPopup(`<b>${d.alias || d.codigo}</b>`)
-                  .openPopup();
-              });
-            }
-
-            document.getElementById("lista-dispositivos").appendChild(li);
-            // --- FIN DEL NUEVO CÓDIGO ---
-
-            // Añadir funcionalidad al botón "Ver"
-            const verBtn = li.querySelector(".ver-mapa");
-            if (verBtn) {
-              verBtn.addEventListener("click", () => {
-                if (d.lat && d.lon) {
-                  if (marcadores[d.codigo]) {
-                    map.removeLayer(marcadores[d.codigo]);
-                  }
-
-                  marcadores[d.codigo] = L.marker([d.lat, d.lon])
-                    .addTo(map)
-                    .bindPopup(
-                      `<b>${
-                        d.alias || d.codigo
-                      }</b><br>Última actualización: ${new Date(
-                        d.ultima_conexion * 1000
-                      ).toLocaleTimeString()}`
-                    );
-
-                  map.setView([d.lat, d.lon], 15);
-                }
-              });
-            }
-
-            // Añadir funcionalidad al botón "Eliminar"
-            li.querySelector(".btn-eliminar").addEventListener("click", () => {
-              if (confirm(`¿Eliminar dispositivo ${d.alias || d.codigo}?`)) {
-                fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
-                  .then(() => cargarDispositivos())
-                  .catch((err) => console.error("Error al eliminar:", err));
-              }
-            });
-
-            lista.appendChild(li);
-          });
-        } catch (err) {
-          console.error("Error al cargar dispositivos:", err);
-        }
-      }
-
-      // Cargar links generados (sin ubicación aún)
-      async function cargarLinksGenerados() {
-        try {
-          const res = await fetch("/api/links-generados");
-          const data = await res.json();
-
-          const lista = document.getElementById("lista-links");
           lista.innerHTML = "";
 
           data.forEach((d) => {
             const li = document.createElement("li");
             li.innerHTML = `
-        <span class="alias">${d.alias || d.codigo}</span>
-        <span class="estado">${d.estado === "activo" ? "✅" : "❌"}</span>
-        <button class="btn-ver" data-codigo="${d.codigo}">Ver</button>
-        <button class="btn-eliminar" data-codigo="${d.codigo}">Eliminar</button>
-    `;
+                <span class="codigo">${d.codigo}</span>
+                <span class="alias">${d.alias || "Sin alias"}</span>
+                <span class="estado">${
+                  d.estado === "activo" ? "✅" : "❌"
+                }</span>
+                <button class="btn-ver" data-lat="${d.lat || ""}" data-lon="${
+              d.lon || ""
+            }" 
+                    ${!d.lat ? 'disabled title="No hay ubicación"' : ""}>
+                    Ver
+                </button>
+                <button class="btn-eliminar" data-codigo="${
+                  d.codigo
+                }">Eliminar</button>
+            `;
 
-            // Deshabilita el botón si no hay ubicación
+            // Habilitar funcionalidad del botón Ver
             const verBtn = li.querySelector(".btn-ver");
-            if (!d.lat || !d.lon) {
-              verBtn.disabled = true;
-              verBtn.title = "Esperando primera ubicación";
-            }
-
-            // Añade funcionalidad al botón Ver
-            verBtn.addEventListener("click", () => {
-              if (d.lat && d.lon) {
+            if (verBtn && d.lat) {
+              verBtn.addEventListener("click", () => {
                 map.setView([d.lat, d.lon], 15);
                 if (marcadores[d.codigo]) {
-                  marcadores[d.codigo].openPopup();
+                  marcadores[d.codigo].setLatLng([d.lat, d.lon]);
+                } else {
+                  marcadores[d.codigo] = L.marker([d.lat, d.lon])
+                    .addTo(map)
+                    .bindPopup(`<b>${d.alias || d.codigo}</b>`);
                 }
-              }
-            });
+              });
+            }
 
             lista.appendChild(li);
           });
         } catch (err) {
-          console.error("Error al cargar enlaces generados:", err);
+          console.error("Error:", err);
         }
       }
 

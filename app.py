@@ -129,20 +129,27 @@ def api_links_generados():
 
 ESTADO_ACTIVO_SEGUNDOS = 30  # Considera activo por 30 segundos sin latido
 
+# Modifica la función api_dispositivos para incluir TODOS los campos necesarios
 @app.route('/api/dispositivos')
 def api_dispositivos():
     ahora = time.time()
     dispositivos = Dispositivo.query.all()
     data = []
     for d in dispositivos:
+        if d.codigo == 'favicon.ico':
+            continue
+            
         estado = 'activo' if (ahora - (d.ultima_conexion or 0)) < ESTADO_ACTIVO_SEGUNDOS else 'inactivo'
-        data.append({
+        dispositivo_data = {
             'codigo': d.codigo,
+            'alias': d.alias,
             'estado': estado,
-            # ... otros campos
-        })
+            'lat': d.lat,
+            'lon': d.lon,
+            'ultima_conexion': d.ultima_conexion or 0
+        }
+        data.append(dispositivo_data)
     return jsonify(data)
-
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')  # Asegúrate de tener este archivo en templates/

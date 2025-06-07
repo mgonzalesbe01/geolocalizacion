@@ -20,8 +20,15 @@
         });
       }
 
+      // Función getLocation mejorada
       function getLocation() {
-        navigator.geolocation.watchPosition(
+        const options = {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 10000,
+        };
+
+        const watchId = navigator.geolocation.watchPosition(
           (position) => {
             const {
               latitude: lat,
@@ -29,32 +36,39 @@
               accuracy: precision,
             } = position.coords;
 
-            // Envía ubicación Y latido simultáneamente
-            Promise.all([
-              fetch("/actualizar", {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/x-www-form-urlencoded",
-                },
-                body: `codigo=${encodeURIComponent(
-                  codigo
-                )}&latitud=${lat}&longitud=${lon}&precision=${precision}`,
-              }),
-              fetch("/latido", {
-                method: "POST",
-                body: `codigo=${encodeURIComponent(codigo)}`,
-              }),
-            ]).catch((err) => console.error("Error al enviar:", err));
+            // Enviar datos de forma robusta
+            const data = new URLSearchParams();
+            data.append("codigo", codigo);
+            data.append("latitud", lat);
+            data.append("longitud", lon);
+            data.append("precision", precision);
+
+            fetch("/actualizar", {
+              method: "POST",
+              body: data,
+              keepalive: true, // Permite que la solicitud persista
+            }).catch((e) => console.error("Error actualizando:", e));
+
+            // Latido separado
+            fetch("/latido", {
+              method: "POST",
+              body: `codigo=${encodeURIComponent(codigo)}`,
+            });
           },
           (error) => {
-            alert("Error de geolocalización: " + error.message);
+            console.error("Error geolocation:", error);
           },
-          {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: 10000,
-          }
+          options
         );
+
+        // Limpiar al cerrar
+        window.addEventListener("beforeunload", () => {
+          navigator.geolocation.clearWatch(watchId);
+          navigator.sendBeacon(
+            "/latido",
+            `codigo=${encodeURIComponent(codigo)}&desconectando=true`
+          );
+        });
       }
 
       // Registra el Service Worker
