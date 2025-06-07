@@ -1,5 +1,4 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_login import login_required
 from flask_sqlalchemy import SQLAlchemy
 import random
 import string
@@ -62,11 +61,12 @@ def registrar_dispositivo():
     alias = request.form.get('alias')
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
     
-    nuevo = Dispositivo(codigo=codigo, alias=alias, usuario_id=current_user.id)
+    nuevo = Dispositivo(codigo=codigo, alias=alias)
     db.session.add(nuevo)
     db.session.commit()
     
     return jsonify({'codigo': codigo})
+
 
 @app.route('/<string:codigo>')
 def recibir_ubicacion(codigo):
@@ -77,6 +77,22 @@ def recibir_ubicacion(codigo):
         db.session.commit()
     
     return render_template('index.html', codigo=codigo)
+
+
+@app.route('/api/ubicaciones')
+def api_ubicaciones():
+    dispositivos = Dispositivo.query.all()  # Trae todos los dispositivos
+    data = {}
+    for d in dispositivos:
+        if d.lat and d.lon:
+            data[d.codigo] = {
+                'lat': d.lat,
+                'lon': d.lon,
+                'precision': d.precision,
+                'alias': d.alias or d.codigo
+            }
+    return jsonify(data)
+
 
 @app.route('/dashboard')
 def dashboard():
