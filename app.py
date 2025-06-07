@@ -22,10 +22,11 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 class Dispositivo(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     codigo = db.Column(db.String(8), unique=True, nullable=False)
-    alias = db.Column(db.String(100))  # Campo para el alias
+    alias = db.Column(db.String(100))
     lat = db.Column(db.Float)
     lon = db.Column(db.Float)
     precision = db.Column(db.Float)
+    ultima_conexion = db.Column(db.Float, default=0.0)  # Asegúrate que este campo existe
     ultima_actualizacion = db.Column(db.Float, default=0.0)
 
 # Crea tablas al iniciar
@@ -133,13 +134,15 @@ def api_dispositivos():
     data = []
     
     for d in dispositivos:
-        estado = 'activo' if (ahora - (d.ultima_conexion or 0)) < 45 else 'inactivo'
+        # Asegúrate de manejar el caso donde ultima_conexion es None
+        ultima_conexion = d.ultima_conexion if d.ultima_conexion else 0
+        estado = 'activo' if (ahora - ultima_conexion) < 45 else 'inactivo'
         
         dispositivo_data = {
             'codigo': d.codigo,
             'alias': d.alias or d.codigo,
             'estado': estado,
-            'ultima_conexion': d.ultima_conexion
+            'ultima_conexion': ultima_conexion
         }
         
         if d.lat and d.lon:
@@ -175,7 +178,7 @@ def latido():
     if not disp:
         return jsonify({'status': 'error'}), 404
     
-    disp.ultima_conexion = time.time()
+    disp.ultima_conexion = time.time()  # Actualiza el timestamp
     
     # Si es un mensaje de desconexión
     if request.form.get('desconectando'):
