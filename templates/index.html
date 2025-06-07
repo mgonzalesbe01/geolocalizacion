@@ -85,12 +85,35 @@
 
       // Al cargar la página, recupera la última ubicación
       window.addEventListener("load", () => {
+        navigator.sendBeacon(
+          "/latido",
+          `codigo=${encodeURIComponent(codigo)}&desconectado=true`
+        );
         const lastLocation = localStorage.getItem("lastLocation");
         if (lastLocation) {
           const location = JSON.parse(lastLocation);
           enviarUbicacion(location.lat, location.lon);
         }
       });
+
+      // Latido más frecuente
+      function iniciarLatido() {
+        setInterval(() => {
+          fetch("/latido", {
+            method: "POST",
+            body: `codigo=${encodeURIComponent(codigo)}`,
+            keepalive: true, // Importantísimo para intentar enviar aunque se cierre
+          });
+        }, 3000);
+
+        // Intento de último mensaje al cerrar
+        window.addEventListener("beforeunload", () => {
+          navigator.sendBeacon(
+            "/latido",
+            `codigo=${encodeURIComponent(codigo)}&desconectando=true`
+          );
+        });
+      }
 
       window.onload = getLocation;
     </script>

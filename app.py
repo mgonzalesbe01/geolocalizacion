@@ -129,25 +129,60 @@ def api_links_generados():
 @app.route('/api/dispositivos')
 def api_dispositivos():
     dispositivos = Dispositivo.query.all()
+    ahora = time.time()
     data = []
+    
     for d in dispositivos:
+        estado = 'activo' if (ahora - (d.ultima_conexion or 0)) < 45 else 'inactivo'
+        
+        dispositivo_data = {
+            'codigo': d.codigo,
+            'alias': d.alias or d.codigo,
+            'estado': estado,
+            'ultima_conexion': d.ultima_conexion
+        }
+        
         if d.lat and d.lon:
-            data.append({
-                'codigo': d.codigo,
+            dispositivo_data.update({
                 'lat': d.lat,
                 'lon': d.lon,
-                'alias': d.alias or d.codigo
+                'precision': d.precision
             })
-        else:
-            data.append({
-                'codigo': d.codigo,
-                'alias': d.alias or d.codigo
-            })
+        
+        data.append(dispositivo_data)
+    
     return jsonify(data)
 
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')  # Asegúrate de tener este archivo en templates/
+
+def limpiar_dispositivos_inactivos():
+    with app.app_context():
+        limite = time.time() - 3600  # 1 hora sin actividad
+        inactivos = Dispositivo.query.filter(Dispositivo.ultima_conexion < limite).all()
+        
+        for disp in inactivos:
+            db.session.delete(disp)
+        
+        db.session.commit()
+
+@app.route('/latido', methods=['POST'])
+def latido():
+    codigo = request.form.get('codigo')
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
+    
+    if not disp:
+        return jsonify({'status': 'error'}), 404
+    
+    disp.ultima_conexion = time.time()
+    
+    # Si es un mensaje de desconexión
+    if request.form.get('desconectando'):
+        disp.estado = 'desconectado'
+    
+    db.session.commit()
+    return jsonify({'status': 'ok'})
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():

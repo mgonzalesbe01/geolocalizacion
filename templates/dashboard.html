@@ -53,6 +53,54 @@
         font-size: 12px;
         margin-left: 10px;
       }
+
+      .inactivo {
+        opacity: 0.6;
+      }
+
+      .estado {
+        margin-left: 10px;
+        font-size: 1.2em;
+      }
+      /* Estilos para la nueva estructura */
+      li {
+        padding: 10px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+        background: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      li.inactivo {
+        opacity: 0.6;
+        background: #eee;
+      }
+
+      .alias {
+        flex-grow: 1;
+        margin-right: 10px;
+      }
+
+      .ver-mapa {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+
+      .btn-eliminar {
+        background: #f44336;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        cursor: pointer;
+      }
     </style>
   </head>
   <body>
@@ -97,52 +145,73 @@
           const data = await res.json();
 
           const lista = document.getElementById("lista-dispositivos");
-          lista.innerHTML = "";
+          lista.innerHTML = ""; // Limpiar lista antes de actualizar
 
           data.forEach((d) => {
             if (d.codigo === "favicon.ico") return;
 
-            // Solo mostrar dispositivos con ubicación
-            if (d.lat && d.lon) {
-              const li = document.createElement("li");
-
-              const alias = document.createElement("span");
-              alias.textContent = d.alias || d.codigo;
-
-              const eliminarBtn = document.createElement("button");
-              eliminarBtn.textContent = "Eliminar";
-              eliminarBtn.className = "btn-eliminar";
-
-              eliminarBtn.onclick = () => {
-                if (confirm("¿Eliminar este dispositivo?")) {
-                  fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
-                    .then(() => location.reload())
-                    .catch((err) => alert("Error al eliminar"));
+            // --- AQUÍ VA EL NUEVO CÓDIGO ---
+            const li = document.createElement("li");
+            li.innerHTML = `
+                <span class="alias ${d.estado}">${d.alias || d.codigo}</span>
+                <span class="estado">${
+                  d.estado === "activo" ? "✅" : "❌"
+                }</span>
+                ${
+                  d.lat
+                    ? `<button class="ver-mapa" data-codigo="${d.codigo}">Ver</button>`
+                    : ""
                 }
-              };
+                <button class="btn-eliminar" data-codigo="${
+                  d.codigo
+                }">Eliminar</button>
+            `;
 
-              alias.onclick = () => {
-                Object.values(marcadores).forEach((marker) =>
-                  map.removeLayer(marker)
-                );
-
-                marcadores[d.codigo] = L.marker([d.lat, d.lon])
-                  .addTo(map)
-                  .bindPopup(
-                    `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
-                  );
-                map.setView([d.lat, d.lon], 16);
-              };
-
-              li.appendChild(alias);
-              li.appendChild(eliminarBtn);
-              lista.appendChild(li);
+            if (d.estado === "inactivo") {
+              li.classList.add("inactivo");
             }
+            // --- FIN DEL NUEVO CÓDIGO ---
+
+            // Añadir funcionalidad al botón "Ver"
+            const verBtn = li.querySelector(".ver-mapa");
+            if (verBtn) {
+              verBtn.addEventListener("click", () => {
+                if (d.lat && d.lon) {
+                  if (marcadores[d.codigo]) {
+                    map.removeLayer(marcadores[d.codigo]);
+                  }
+
+                  marcadores[d.codigo] = L.marker([d.lat, d.lon])
+                    .addTo(map)
+                    .bindPopup(
+                      `<b>${
+                        d.alias || d.codigo
+                      }</b><br>Última actualización: ${new Date(
+                        d.ultima_conexion * 1000
+                      ).toLocaleTimeString()}`
+                    );
+
+                  map.setView([d.lat, d.lon], 15);
+                }
+              });
+            }
+
+            // Añadir funcionalidad al botón "Eliminar"
+            li.querySelector(".btn-eliminar").addEventListener("click", () => {
+              if (confirm(`¿Eliminar dispositivo ${d.alias || d.codigo}?`)) {
+                fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
+                  .then(() => cargarDispositivos())
+                  .catch((err) => console.error("Error al eliminar:", err));
+              }
+            });
+
+            lista.appendChild(li);
           });
         } catch (err) {
           console.error("Error al cargar dispositivos:", err);
         }
       }
+
       // Cargar links generados (sin ubicación aún)
       async function cargarLinksGenerados() {
         try {
