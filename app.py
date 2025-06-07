@@ -35,11 +35,8 @@ with app.app_context():
 
 @app.route('/')
 def home():
-    return redirect(url_for('mapa'))
+    return redirect(url_for('dashboard'))
 
-@app.route('/mapa')
-def mapa():
-    return render_template('mapa.html')
 
 @app.route('/generar-enlace', methods=['POST'])
 def generar_enlace():
@@ -51,10 +48,26 @@ def generar_enlace():
     db.session.commit()
     
     return jsonify({
-        'enlace': f'https://{request.host}/{codigo}',    
         'codigo': codigo,
-        'alias': alias or codigo
+        'alias': alias or codigo,
+        'enlace': f'https://{request.host}/{codigo}' 
     })
+
+@app.route('/eliminar/<string:codigo>')
+def eliminar_dispositivo(codigo):
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
+    
+    if not disp:
+        return jsonify({'status': 'error', 'mensaje': 'Código no encontrado'}), 404
+    
+    try:
+        db.session.delete(disp)
+        db.session.commit()
+        return jsonify({'status': 'ok', 'mensaje': f'Código {codigo} eliminado'})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'status': 'error', 'mensaje': str(e)}), 500
+    
 
 @app.route('/registrar-dispositivo', methods=['POST'])
 def registrar_dispositivo():
@@ -93,10 +106,45 @@ def api_ubicaciones():
             }
     return jsonify(data)
 
+@app.route('/api/dispositivos')
+def api_dispositivos():
+    dispositivos = Dispositivo.query.all()
+    data = []
+    for d in dispositivos:
+        if d.lat and d.lon:
+            data.append({
+                'codigo': d.codigo,
+                'lat': d.lat,
+                'lon': d.lon,
+                'alias': d.alias or d.codigo
+            })
+    return jsonify(data)
 
 @app.route('/dashboard')
 def dashboard():
     return render_template('dashboard.html')  # Asegúrate de tener este archivo en templates/
+
+@app.route('/actualizar', methods=['POST'])
+def actualizar_ubicacion():
+    codigo = request.form.get('codigo')
+    lat = request.form.get('latitud')
+    lon = request.form.get('longitud')
+    precision = request.form.get('precision')
+
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
+
+    if not disp:
+        return jsonify({'status': 'error', 'message': 'Código no encontrado'}), 404
+
+    if not lat or not lon:
+        return jsonify({'status': 'error', 'message': 'Faltan coordenadas'}), 400
+
+    disp.lat = float(lat)
+    disp.lon = float(lon)
+    disp.precision = float(precision) if precision else None
+    db.session.commit()
+
+    return jsonify({'status': 'ok'})
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

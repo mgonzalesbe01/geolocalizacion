@@ -32,11 +32,10 @@
             const lon = position.coords.longitude;
             const precision = position.coords.accuracy;
 
-            // Manda ubicación al servidor
-            enviarUbidacion(lat, lon, precision);
+            enviarUbicacion(lat, lon, precision);
           },
           (error) => {
-            alert("Permiso de ubicación denegado");
+            document.body.innerText = "Permiso de ubicación denegado";
           },
           {
             enableHighAccuracy: true,
