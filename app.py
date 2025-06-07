@@ -4,6 +4,7 @@ import random
 import string
 import os
 from werkzeug.middleware.proxy_fix import ProxyFix
+import time
 
 # Inicializa Flask
 app = Flask(__name__)
@@ -169,6 +170,18 @@ def actualizar_ubicacion():
     db.session.commit()
 
     return jsonify({'status': 'ok'})
+
+@app.route('/dispositivo/<codigo>/estado')
+def estado_dispositivo(codigo):
+    disp = Dispositivo.query.filter_by(codigo=codigo).first()
+    return jsonify({
+        'activo': disp.ultima_conexion > time.time() - 60,
+        'ubicacion': {
+            'lat': disp.lat,
+            'lon': disp.lon,
+            'timestamp': disp.ultima_conexion
+        }
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))

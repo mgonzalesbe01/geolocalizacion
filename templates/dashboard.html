@@ -210,6 +210,26 @@
           cargarDispositivos(); // Recargar solo los dispositivos con ubicación
         });
 
+      function actualizarMarcadores() {
+        fetch(`/dispositivo/${codigo}/estado`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.activo) {
+              // Actualiza el marcador
+              marcadores[codigo].setLatLng([
+                data.ubicacion.lat,
+                data.ubicacion.lon,
+              ]);
+            } else {
+              // Muestra notificación de desconectado
+              mostrarNotificacion(`${codigo} desconectado`);
+            }
+          });
+      }
+
+      // Intenta reconectar cada 5 segundos
+      setInterval(actualizarMarcadores, 5000);
+
       // Carga inicial y periódica
       setInterval(cargarDispositivos, 5000);
       setInterval(cargarLinksGenerados, 5000);

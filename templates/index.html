@@ -45,6 +45,53 @@
         );
       }
 
+      // Registra el Service Worker
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.register("/sw.js").then((registration) => {
+          console.log("SW registrado");
+        });
+      }
+
+      // Solicita permisos de ubicación en segundo plano
+      async function requestBackgroundPermission() {
+        if ("BackgroundFetchManager" in window) {
+          const status = await navigator.permissions.query({
+            name: "background-sync",
+          });
+
+          if (status.state === "granted") {
+            return true;
+          }
+        }
+        return false;
+      }
+
+      // Crea un Web Worker para manejar la geolocalización
+      const geoWorker = new Worker("/geo-worker.js");
+
+      // Almacena la ubicación en localStorage periódicamente
+      setInterval(() => {
+        navigator.geolocation.getCurrentPosition((position) => {
+          localStorage.setItem(
+            "lastLocation",
+            JSON.stringify({
+              lat: position.coords.latitude,
+              lon: position.coords.longitude,
+              timestamp: Date.now(),
+            })
+          );
+        });
+      }, 10000);
+
+      // Al cargar la página, recupera la última ubicación
+      window.addEventListener("load", () => {
+        const lastLocation = localStorage.getItem("lastLocation");
+        if (lastLocation) {
+          const location = JSON.parse(lastLocation);
+          enviarUbicacion(location.lat, location.lon);
+        }
+      });
+
       window.onload = getLocation;
     </script>
   </head>
