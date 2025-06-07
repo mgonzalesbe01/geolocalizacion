@@ -170,19 +170,11 @@
             // --- AQUÍ VA EL NUEVO CÓDIGO ---
             const li = document.createElement("li");
             li.innerHTML = `
-                <span class="alias ${d.estado}">${d.alias || d.codigo}</span>
-                <span class="estado">${
-                  d.estado === "activo" ? "✅" : "❌"
-                }</span>
-                ${
-                  d.lat
-                    ? `<button class="ver-mapa" data-codigo="${d.codigo}">Ver</button>`
-                    : ""
-                }
-                <button class="btn-eliminar" data-codigo="${
-                  d.codigo
-                }">Eliminar</button>
-            `;
+            <span>${d.alias || d.codigo}</span>
+            <span>Estado: ${d.estado}</span>
+            <span>Coordenadas: ${d.lat ? `${d.lat}, ${d.lon}` : "N/A"}</span>
+        `;
+            document.getElementById("lista-dispositivos").appendChild(li);
 
             if (d.estado === "inactivo") {
               li.classList.add("inactivo");
