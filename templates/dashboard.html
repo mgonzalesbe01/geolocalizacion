@@ -92,86 +92,94 @@
 
       // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
-        const res = await fetch("/api/dispositivos");
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/dispositivos");
+          const data = await res.json();
 
-        const lista = document.getElementById("lista-dispositivos");
-        lista.innerHTML = "";
+          const lista = document.getElementById("lista-dispositivos");
+          lista.innerHTML = "";
 
-        Object.entries(data).forEach(([codigo, coords]) => {
-          const li = document.createElement("li");
+          Object.entries(data).forEach(([codigo, coords]) => {
+            const li = document.createElement("li");
 
-          const alias = document.createElement("span");
-          alias.textContent = coords.alias || codigo;
+            const alias = document.createElement("span");
+            alias.textContent = coords.alias || codigo;
 
-          const eliminarBtn = document.createElement("button");
-          eliminarBtn.textContent = "Eliminar";
-          eliminarBtn.className = "btn-eliminar";
+            const eliminarBtn = document.createElement("button");
+            eliminarBtn.textContent = "Eliminar";
+            eliminarBtn.className = "btn-eliminar";
 
-          eliminarBtn.onclick = () => {
-            if (confirm("¿Eliminar este dispositivo?")) {
-              fetch(`/eliminar/${codigo}`, { method: "DELETE" })
-                .then(() => location.reload())
-                .catch((err) => alert("Error al eliminar"));
-            }
-          };
+            eliminarBtn.onclick = () => {
+              if (confirm("¿Eliminar este dispositivo?")) {
+                fetch(`/eliminar/${codigo}`, { method: "DELETE" })
+                  .then(() => location.reload())
+                  .catch((err) => alert("Error al eliminar"));
+              }
+            };
 
-          alias.onclick = () => {
-            Object.values(marcadores).forEach((marker) =>
-              map.removeLayer(marker)
-            );
+            alias.onclick = () => {
+              Object.values(marcadores).forEach((marker) =>
+                map.removeLayer(marker)
+              );
 
-            if (coords.lat && coords.lon) {
-              marcadores[codigo] = L.marker([coords.lat, coords.lon])
-                .addTo(map)
-                .bindPopup(
-                  `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
-                );
-              map.setView([coords.lat, coords.lon], 16);
-            }
-          };
+              if (coords.lat && coords.lon) {
+                marcadores[codigo] = L.marker([coords.lat, coords.lon])
+                  .addTo(map)
+                  .bindPopup(
+                    `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
+                  );
+                map.setView([coords.lat, coords.lon], 16);
+              }
+            };
 
-          li.appendChild(alias);
-          li.appendChild(eliminarBtn);
-          lista.appendChild(li);
-        });
+            li.appendChild(alias);
+            li.appendChild(eliminarBtn);
+            lista.appendChild(li);
+          });
+        } catch (err) {
+          console.error("Error al cargar dispositivos:", err);
+        }
       }
 
       // Cargar links generados (sin ubicación aún)
       async function cargarLinksGenerados() {
-        const res = await fetch("/api/links-generados");
-        const data = await res.json();
+        try {
+          const res = await fetch("/api/links-generados");
+          const data = await res.json();
 
-        const lista = document.getElementById("lista-links");
-        lista.innerHTML = "";
+          const lista = document.getElementById("lista-links");
+          lista.innerHTML = "";
 
-        data.forEach((d) => {
-          const li = document.createElement("li");
+          data.forEach((d) => {
+            const li = document.createElement("li");
 
-          const enlace = document.createElement("p");
-          const url = `https://${window.location.host}/${d.codigo}`;
-          enlace.className = "enlace";
-          enlace.textContent = url;
+            const enlace = document.createElement("p");
+            const url = `https://${window.location.host}/${d.codigo}`;
+            enlace.className = "enlace";
+            enlace.textContent = url;
 
-          const btnCopiar = document.createElement("button");
-          btnCopiar.textContent = "Copiar";
-          btnCopiar.className = "btn-copiar";
+            const btnCopiar = document.createElement("button");
+            btnCopiar.textContent = "Copiar";
+            btnCopiar.className = "btn-copiar";
 
-          btnCopiar.onclick = () => {
-            navigator.clipboard
-              .writeText(url)
-              .then(() => {
-                alert("✅ Enlace copiado");
-              })
-              .catch((err) => {
-                alert("❌ Error al copiar: " + err.message);
-              });
-          };
+            btnCopiar.onclick = () => {
+              navigator.clipboard
+                .writeText(url)
+                .then(() => {
+                  alert("✅ Enlace copiado");
+                })
+                .catch((err) => {
+                  alert("❌ Error al copiar: " + err.message);
+                });
+            };
 
-          li.appendChild(enlace);
-          li.appendChild(btnCopiar);
-          lista.appendChild(li);
-        });
+            li.appendChild(enlace);
+            li.appendChild(btnCopiar);
+            lista.appendChild(li);
+          });
+        } catch (err) {
+          console.error("Error al cargar enlaces generados:", err);
+        }
       }
 
       // Generar nuevo dispositivo

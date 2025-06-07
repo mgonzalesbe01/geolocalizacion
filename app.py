@@ -53,10 +53,9 @@ def generar_enlace():
         'enlace': f'https://{request.host}/{codigo}' 
     })
 
-@app.route('/eliminar/<string:codigo>')
+@app.route('/eliminar/<string:codigo>', methods=['DELETE'])
 def eliminar_dispositivo(codigo):
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    
     if not disp:
         return jsonify({'status': 'error', 'mensaje': 'Código no encontrado'}), 404
     
