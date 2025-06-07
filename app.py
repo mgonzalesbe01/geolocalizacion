@@ -175,14 +175,25 @@ def latido():
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
-    codigo = request.form.get('codigo')
-    disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    if disp:
-        disp.lat = request.form.get('latitud')
-        disp.lon = request.form.get('longitud')
-        disp.ultima_conexion = time.time()  # ¡Asegúrate de actualizar esto!
-        db.session.commit()
-    return jsonify({'status': 'ok'})
+    try:
+        codigo = request.form['codigo']
+        lat = float(request.form['latitud'])
+        lon = float(request.form['longitud'])
+        
+        print(f"Recibida ubicación de {codigo}: {lat}, {lon}")  # ← Log para depuración
+        
+        disp = Dispositivo.query.filter_by(codigo=codigo).first()
+        if disp:
+            disp.lat = lat
+            disp.lon = lon
+            disp.ultima_conexion = time.time()
+            db.session.commit()
+            return jsonify({'status': 'ok'})
+    except Exception as e:
+        print(f"Error al actualizar ubicación: {str(e)}")  # ← Log de errores
+    return jsonify({'status': 'error'}), 400
+
+
 
 @app.route('/dispositivo/<codigo>/estado')
 def estado_dispositivo(codigo):

@@ -170,15 +170,31 @@
             // --- AQUÍ VA EL NUEVO CÓDIGO ---
             const li = document.createElement("li");
             li.innerHTML = `
-            <span>${d.alias || d.codigo}</span>
-            <span>Estado: ${d.estado}</span>
-            <span>Coordenadas: ${d.lat ? `${d.lat}, ${d.lon}` : "N/A"}</span>
-        `;
-            document.getElementById("lista-dispositivos").appendChild(li);
+        <span class="codigo">${d.codigo}</span>
+        <span class="alias">${d.alias || "Sin alias"}</span>
+        <span class="estado ${d.estado}">${
+              d.estado === "activo" ? "✅" : "❌"
+            }</span>
+        <span class="coordenadas">${d.lat ? "📍" : "🚫"}</span>
+        ${
+          d.lat
+            ? `<button class="ver-mapa" data-lat="${d.lat}" data-lon="${d.lon}">Ver</button>`
+            : ""
+        }
+    `;
 
-            if (d.estado === "inactivo") {
-              li.classList.add("inactivo");
+            // Añade funcionalidad al botón
+            if (d.lat) {
+              li.querySelector(".ver-mapa").addEventListener("click", () => {
+                map.setView([d.lat, d.lon], 15);
+                L.marker([d.lat, d.lon])
+                  .addTo(map)
+                  .bindPopup(`<b>${d.alias || d.codigo}</b>`)
+                  .openPopup();
+              });
             }
+
+            document.getElementById("lista-dispositivos").appendChild(li);
             // --- FIN DEL NUEVO CÓDIGO ---
 
             // Añadir funcionalidad al botón "Ver"

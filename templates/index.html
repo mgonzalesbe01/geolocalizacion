@@ -21,21 +21,39 @@
       }
 
       function getLocation() {
-        if (!navigator.geolocation) {
-          document.body.innerText = "Geolocalización no soportada";
-          return;
-        }
-
         navigator.geolocation.watchPosition(
           (position) => {
-            const { latitude: lat, longitude: lon } = position.coords;
-            fetch("/actualizar", {
-              method: "POST",
-              body: `codigo=${codigo}&latitud=${lat}&longitud=${lon}`,
-            });
+            const {
+              latitude: lat,
+              longitude: lon,
+              accuracy: precision,
+            } = position.coords;
+
+            // Envía ubicación Y latido simultáneamente
+            Promise.all([
+              fetch("/actualizar", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: `codigo=${encodeURIComponent(
+                  codigo
+                )}&latitud=${lat}&longitud=${lon}&precision=${precision}`,
+              }),
+              fetch("/latido", {
+                method: "POST",
+                body: `codigo=${encodeURIComponent(codigo)}`,
+              }),
+            ]).catch((err) => console.error("Error al enviar:", err));
           },
-          null,
-          { enableHighAccuracy: true }
+          (error) => {
+            alert("Error de geolocalización: " + error.message);
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 0,
+            timeout: 10000,
+          }
         );
       }
 
