@@ -28,20 +28,14 @@
 
         navigator.geolocation.watchPosition(
           (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            const precision = position.coords.accuracy;
-
-            enviarUbicacion(lat, lon, precision);
+            const { latitude: lat, longitude: lon } = position.coords;
+            fetch("/actualizar", {
+              method: "POST",
+              body: `codigo=${codigo}&latitud=${lat}&longitud=${lon}`,
+            });
           },
-          (error) => {
-            document.body.innerText = "Permiso de ubicación denegado";
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0,
-          }
+          null,
+          { enableHighAccuracy: true }
         );
       }
 
@@ -103,7 +97,7 @@
             method: "POST",
             body: `codigo=${encodeURIComponent(codigo)}`,
           });
-        }, 10000);
+        }, 5000);
 
         // Intento de último mensaje al cerrar
         window.addEventListener("beforeunload", () => {

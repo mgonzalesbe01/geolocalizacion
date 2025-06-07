@@ -127,33 +127,20 @@ def api_links_generados():
         })
     return jsonify(data)
 
+ESTADO_ACTIVO_SEGUNDOS = 30  # Considera activo por 30 segundos sin latido
+
 @app.route('/api/dispositivos')
 def api_dispositivos():
-    dispositivos = Dispositivo.query.all()
     ahora = time.time()
+    dispositivos = Dispositivo.query.all()
     data = []
-    
     for d in dispositivos:
-        # Asegúrate de manejar el caso donde ultima_conexion es None
-        ultima_conexion = d.ultima_conexion if d.ultima_conexion else 0
-        estado = 'activo' if (ahora - ultima_conexion) < 300 else 'inactivo'
-        
-        dispositivo_data = {
+        estado = 'activo' if (ahora - (d.ultima_conexion or 0)) < ESTADO_ACTIVO_SEGUNDOS else 'inactivo'
+        data.append({
             'codigo': d.codigo,
-            'alias': d.alias or d.codigo,
             'estado': estado,
-            'ultima_conexion': ultima_conexion
-        }
-        
-        if d.lat and d.lon:
-            dispositivo_data.update({
-                'lat': d.lat,
-                'lon': d.lon,
-                'precision': d.precision
-            })
-        
-        data.append(dispositivo_data)
-    
+            # ... otros campos
+        })
     return jsonify(data)
 
 @app.route('/dashboard')
@@ -170,12 +157,16 @@ def limpiar_dispositivos_inactivos():
         
         db.session.commit()
 
+# Añade al modelo Dispositivo:
+ultima_conexion = db.Column(db.Float, default=0.0, nullable=False)  # No puede ser NULL
+
+# Y en las rutas:
 @app.route('/latido', methods=['POST'])
 def latido():
     codigo = request.form.get('codigo')
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
     if disp:
-        disp.ultima_conexion = time.time()  # Actualiza el timestamp
+        disp.ultima_conexion = time.time()
         db.session.commit()
     return jsonify({'status': 'ok'})
 
@@ -185,23 +176,12 @@ def latido():
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
     codigo = request.form.get('codigo')
-    lat = request.form.get('latitud')
-    lon = request.form.get('longitud')
-    precision = request.form.get('precision')
-
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
-
-    if not disp:
-        return jsonify({'status': 'error', 'message': 'Código no encontrado'}), 404
-
-    if not lat or not lon:
-        return jsonify({'status': 'error', 'message': 'Faltan coordenadas'}), 400
-
-    disp.lat = float(lat)
-    disp.lon = float(lon)
-    disp.precision = float(precision) if precision else None
-    db.session.commit()
-
+    if disp:
+        disp.lat = request.form.get('latitud')
+        disp.lon = request.form.get('longitud')
+        disp.ultima_conexion = time.time()  # ¡Asegúrate de actualizar esto!
+        db.session.commit()
     return jsonify({'status': 'ok'})
 
 @app.route('/dispositivo/<codigo>/estado')
