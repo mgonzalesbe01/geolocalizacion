@@ -92,7 +92,7 @@
 
       // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
-        const res = await fetch("/api/ubicaciones");
+        const res = await fetch("/api/dispositivos");
         const data = await res.json();
 
         const lista = document.getElementById("lista-dispositivos");
