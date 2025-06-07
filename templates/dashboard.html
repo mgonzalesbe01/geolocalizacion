@@ -41,6 +41,11 @@
         padding: 5px 0;
         border-bottom: 1px solid #eee;
       }
+      .enlace {
+        word-break: break-all;
+        color: blue;
+        text-decoration: underline;
+      }
       .btn-copiar,
       .btn-eliminar {
         padding: 5px 10px;
@@ -48,16 +53,11 @@
         font-size: 12px;
         margin-left: 10px;
       }
-      .enlace {
-        word-break: break-all;
-        color: blue;
-        text-decoration: underline;
-      }
     </style>
   </head>
   <body>
     <div id="sidebar">
-      <!-- Formulario para generar nuevo dispositivo -->
+      <!-- Formulario para generar nuevo enlace -->
       <h3>Generar Nuevo Enlace</h3>
       <form id="form-generar">
         <input
@@ -93,63 +93,52 @@
       // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
         try {
-          const res = await fetch("/api/dispositivos");
+          const res = await fetch("/api/ubicaciones");
           const data = await res.json();
 
           const lista = document.getElementById("lista-dispositivos");
           lista.innerHTML = "";
 
           Object.entries(data).forEach(([codigo, coords]) => {
-            if (codigo === "favicon.ico") return;
-            const li = document.createElement("li");
+            if (codigo === "favicon.ico") return; // Ignorar favicon.ico
 
-            const alias = document.createElement("span");
-            alias.textContent = coords.alias || codigo;
+            if (coords.lat && coords.lon) {
+              const li = document.createElement("li");
 
-            const eliminarBtn = document.createElement("button");
-            eliminarBtn.textContent = "Eliminar";
-            eliminarBtn.className = "btn-eliminar";
+              const alias = document.createElement("span");
+              alias.textContent = coords.alias || codigo;
 
-            eliminarBtn.onclick = () => {
-              if (confirm("¿Eliminar este dispositivo?")) {
-                fetch(`/eliminar/${codigo}`, {
-                  method: "DELETE",
-                })
-                  .then((response) => {
-                    if (!response.ok) {
-                      throw new Error("Error al eliminar");
-                    }
-                    return response.json();
-                  })
-                  .then(() => {
-                    alert("Dispositivo eliminado");
-                    location.reload(); // Recargar página
-                  })
-                  .catch((err) => {
-                    alert("Error al eliminar el dispositivo");
-                    console.error(err);
-                  });
-              }
-            };
+              const eliminarBtn = document.createElement("button");
+              eliminarBtn.textContent = "Eliminar";
+              eliminarBtn.className = "btn-eliminar";
 
-            alias.onclick = () => {
-              Object.values(marcadores).forEach((marker) =>
-                map.removeLayer(marker)
-              );
+              eliminarBtn.onclick = () => {
+                if (confirm("¿Eliminar este dispositivo?")) {
+                  fetch(`/eliminar/${codigo}`, { method: "DELETE" })
+                    .then(() => location.reload())
+                    .catch((err) => alert("Error al eliminar"));
+                }
+              };
 
-              if (coords.lat && coords.lon) {
-                marcadores[codigo] = L.marker([coords.lat, coords.lon])
-                  .addTo(map)
-                  .bindPopup(
-                    `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
-                  );
-                map.setView([coords.lat, coords.lon], 16);
-              }
-            };
+              alias.onclick = () => {
+                Object.values(marcadores).forEach((marker) =>
+                  map.removeLayer(marker)
+                );
 
-            li.appendChild(alias);
-            li.appendChild(eliminarBtn);
-            lista.appendChild(li);
+                if (coords.lat && coords.lon) {
+                  marcadores[codigo] = L.marker([coords.lat, coords.lon])
+                    .addTo(map)
+                    .bindPopup(
+                      `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
+                    );
+                  map.setView([coords.lat, coords.lon], 16);
+                }
+              };
+
+              li.appendChild(alias);
+              li.appendChild(eliminarBtn);
+              lista.appendChild(li);
+            }
           });
         } catch (err) {
           console.error("Error al cargar dispositivos:", err);
@@ -167,6 +156,7 @@
 
           data.forEach((d) => {
             if (d.codigo === "favicon.ico") return;
+
             const li = document.createElement("li");
 
             const enlace = document.createElement("p");
@@ -218,8 +208,8 @@
 
           const data = await res.json();
           aliasInput.value = "";
-          cargarLinksGenerados(); // Recargar lista de enlaces
-          cargarDispositivos(); // Recargar lista de dispositivos
+          cargarLinksGenerados(); // Recargar solo la lista de enlaces
+          cargarDispositivos(); // Recargar solo los dispositivos con ubicación
         });
 
       // Carga inicial y periódica

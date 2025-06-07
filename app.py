@@ -52,7 +52,7 @@ def generar_enlace():
         'alias': alias or codigo,
         'enlace': f'https://{request.host}/{codigo}' 
     })
-
+    
 @app.route('/eliminar/<string:codigo>', methods=['DELETE'])
 def eliminar_dispositivo(codigo):
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
@@ -98,14 +98,16 @@ def favicon():
 
 @app.route('/api/ubicaciones')
 def api_ubicaciones():
-    dispositivos = Dispositivo.query.all()  # Todos los dispositivos
+    dispositivos = Dispositivo.query.all()
     data = {}
     for d in dispositivos:
-        if d.codigo != 'favicon.ico' and d.lat and d.lon:
+        if d.codigo == 'favicon.ico':
+            continue
+        if d.lat and d.lon:
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'precision': d.precision
+                'alias': d.alias or d.codigo
             }
     return jsonify(data)
 
@@ -115,12 +117,13 @@ def api_links_generados():
     dispositivos = Dispositivo.query.all()
     data = []
     for d in dispositivos:
+        if d.codigo == 'favicon.ico':
+            continue
         data.append({
             'codigo': d.codigo,
             'alias': d.alias or d.codigo
         })
     return jsonify(data)
-
 
 @app.route('/api/dispositivos')
 def api_dispositivos():
