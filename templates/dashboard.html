@@ -93,20 +93,21 @@
       // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
         try {
-          const res = await fetch("/api/ubicaciones");
+          const res = await fetch("/api/dispositivos");
           const data = await res.json();
 
           const lista = document.getElementById("lista-dispositivos");
           lista.innerHTML = "";
 
-          Object.entries(data).forEach(([codigo, coords]) => {
-            if (codigo === "favicon.ico") return; // Ignorar favicon.ico
+          data.forEach((d) => {
+            if (d.codigo === "favicon.ico") return;
 
-            if (coords.lat && coords.lon) {
+            // Solo mostrar dispositivos con ubicación
+            if (d.lat && d.lon) {
               const li = document.createElement("li");
 
               const alias = document.createElement("span");
-              alias.textContent = coords.alias || codigo;
+              alias.textContent = d.alias || d.codigo;
 
               const eliminarBtn = document.createElement("button");
               eliminarBtn.textContent = "Eliminar";
@@ -114,7 +115,7 @@
 
               eliminarBtn.onclick = () => {
                 if (confirm("¿Eliminar este dispositivo?")) {
-                  fetch(`/eliminar/${codigo}`, { method: "DELETE" })
+                  fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
                     .then(() => location.reload())
                     .catch((err) => alert("Error al eliminar"));
                 }
@@ -125,14 +126,12 @@
                   map.removeLayer(marker)
                 );
 
-                if (coords.lat && coords.lon) {
-                  marcadores[codigo] = L.marker([coords.lat, coords.lon])
-                    .addTo(map)
-                    .bindPopup(
-                      `<b>${coords.alias || codigo}</b><br>Código: ${codigo}`
-                    );
-                  map.setView([coords.lat, coords.lon], 16);
-                }
+                marcadores[d.codigo] = L.marker([d.lat, d.lon])
+                  .addTo(map)
+                  .bindPopup(
+                    `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
+                  );
+                map.setView([d.lat, d.lon], 16);
               };
 
               li.appendChild(alias);
@@ -144,7 +143,6 @@
           console.error("Error al cargar dispositivos:", err);
         }
       }
-
       // Cargar links generados (sin ubicación aún)
       async function cargarLinksGenerados() {
         try {
