@@ -100,6 +100,7 @@
           lista.innerHTML = "";
 
           Object.entries(data).forEach(([codigo, coords]) => {
+            if (codigo === "favicon.ico") return;
             const li = document.createElement("li");
 
             const alias = document.createElement("span");
@@ -111,9 +112,23 @@
 
             eliminarBtn.onclick = () => {
               if (confirm("¿Eliminar este dispositivo?")) {
-                fetch(`/eliminar/${codigo}`, { method: "DELETE" })
-                  .then(() => location.reload())
-                  .catch((err) => alert("Error al eliminar"));
+                fetch(`/eliminar/${codigo}`, {
+                  method: "DELETE",
+                })
+                  .then((response) => {
+                    if (!response.ok) {
+                      throw new Error("Error al eliminar");
+                    }
+                    return response.json();
+                  })
+                  .then(() => {
+                    alert("Dispositivo eliminado");
+                    location.reload(); // Recargar página
+                  })
+                  .catch((err) => {
+                    alert("Error al eliminar el dispositivo");
+                    console.error(err);
+                  });
               }
             };
 
@@ -151,6 +166,7 @@
           lista.innerHTML = "";
 
           data.forEach((d) => {
+            if (d.codigo === "favicon.ico") return;
             const li = document.createElement("li");
 
             const enlace = document.createElement("p");

@@ -81,27 +81,31 @@ def registrar_dispositivo():
 
 
 @app.route('/<string:codigo>')
-def recibir_ubicacion(codigo):
-    disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    if not disp:
-        disp = Dispositivo(codigo=codigo)
-        db.session.add(disp)
-        db.session.commit()
+def mostrar_pagina(codigo):
+    # Evitar que favicon.ico sea tratado como código
+    if codigo == 'favicon.ico':
+        return "", 204
+    
+    dispositivo = Dispositivo.query.filter_by(codigo=codigo).first()
+    if not dispositivo:
+        return "Código inválido", 404
     
     return render_template('index.html', codigo=codigo)
 
+@app.route('/favicon.ico')
+def favicon():
+    return "", 204
 
 @app.route('/api/ubicaciones')
 def api_ubicaciones():
-    dispositivos = Dispositivo.query.all()  # Trae todos los dispositivos
+    dispositivos = Dispositivo.query.all()  # Todos los dispositivos
     data = {}
     for d in dispositivos:
-        if d.lat and d.lon:
+        if d.codigo != 'favicon.ico' and d.lat and d.lon:
             data[d.codigo] = {
                 'lat': d.lat,
                 'lon': d.lon,
-                'precision': d.precision,
-                'alias': d.alias or d.codigo
+                'precision': d.precision
             }
     return jsonify(data)
 
