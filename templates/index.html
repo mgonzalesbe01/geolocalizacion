@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Compartiendo Ubicación</title>
+    <script>
+      const codigo = "{{ codigo }}";
+
+      function enviarUbicacion(lat, lon, accuracy) {
+        fetch("/actualizar", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: `codigo=${encodeURIComponent(
+            codigo
+          )}&latitud=${encodeURIComponent(lat)}&longitud=${encodeURIComponent(
+            lon
+          )}&precision=${encodeURIComponent(accuracy)}`,
+        });
+      }
+
+      function getLocation() {
+        if (!navigator.geolocation) {
+          document.body.innerText = "Geolocalización no soportada";
+          return;
+        }
+
+        navigator.geolocation.watchPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            const precision = position.coords.accuracy;
+
+            // Manda ubicación al servidor
+            enviarUbidacion(lat, lon, precision);
+          },
+          (error) => {
+            alert("Permiso de ubicación denegado");
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0,
+          }
+        );
+      }
+
+      window.onload = getLocation;
+    </script>
+  </head>
+  <body>
+    <h2>Compartiendo tu ubicación...</h2>
+    <p>Código: {{ codigo }}</p>
+  </body>
+</html>

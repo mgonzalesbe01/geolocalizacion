@@ -3,46 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <title>Mapa en Vivo</title>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link
       rel="stylesheet"
       href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     />
     <style>
       #map {
-        width: 100%;
         height: 100vh;
+        width: 100%;
       }
     </style>
   </head>
   <body>
-    <h2>Mapa en tiempo real</h2>
     <div id="map"></div>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
       const map = L.map("map").setView([0, 0], 2);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution: "© OpenStreetMap",
-      }).addTo(map);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
+        map
+      );
+
+      const marcadores = {};
 
       async function actualizarMarcadores() {
         const res = await fetch("/api/ubicaciones");
         const data = await res.json();
 
-        // Eliminar todos los marcadores actuales
-        map.eachLayer((layer) => {
-          if (layer instanceof L.Marker) {
-            map.removeLayer(layer);
-          }
-        });
+        Object.values(marcadores).forEach((marker) => map.removeLayer(marker));
 
-        // Agregar nuevos marcadores
         for (const [codigo, coords] of Object.entries(data)) {
           if (coords.lat && coords.lon) {
-            L.marker([coords.lat, coords.lon])
+            marcadores[codigo] = L.marker([coords.lat, coords.lon])
               .addTo(map)
               .bindPopup(
-                `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat}<br><b>Lon:</b> ${coords.lon}`
+                `<b>Código:</b> ${codigo}<br><b>Lat:</b> ${coords.lat.toFixed(
+                  6
+                )}<br><b>Lon:</b> ${coords.lon.toFixed(6)}`
               );
           }
         }
