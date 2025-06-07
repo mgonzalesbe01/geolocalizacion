@@ -144,6 +144,7 @@
           const res = await fetch("/api/dispositivos");
           const data = await res.json();
 
+          console.log("Datos recibidos:", data);
           const lista = document.getElementById("lista-dispositivos");
           lista.innerHTML = ""; // Limpiar lista antes de actualizar
 
@@ -300,7 +301,7 @@
       setInterval(actualizarMarcadores, 5000);
 
       // Carga inicial y periódica
-      setInterval(cargarDispositivos, 5000);
+      setInterval(cargarDispositivos, 15000);
       setInterval(cargarLinksGenerados, 5000);
       cargarDispositivos();
       cargarLinksGenerados();

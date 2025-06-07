@@ -102,9 +102,8 @@
           fetch("/latido", {
             method: "POST",
             body: `codigo=${encodeURIComponent(codigo)}`,
-            keepalive: true, // Importantísimo para intentar enviar aunque se cierre
           });
-        }, 3000);
+        }, 10000);
 
         // Intento de último mensaje al cerrar
         window.addEventListener("beforeunload", () => {

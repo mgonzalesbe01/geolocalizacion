@@ -136,7 +136,7 @@ def api_dispositivos():
     for d in dispositivos:
         # Asegúrate de manejar el caso donde ultima_conexion es None
         ultima_conexion = d.ultima_conexion if d.ultima_conexion else 0
-        estado = 'activo' if (ahora - ultima_conexion) < 45 else 'inactivo'
+        estado = 'activo' if (ahora - ultima_conexion) < 300 else 'inactivo'
         
         dispositivo_data = {
             'codigo': d.codigo,
@@ -174,18 +174,13 @@ def limpiar_dispositivos_inactivos():
 def latido():
     codigo = request.form.get('codigo')
     disp = Dispositivo.query.filter_by(codigo=codigo).first()
-    
-    if not disp:
-        return jsonify({'status': 'error'}), 404
-    
-    disp.ultima_conexion = time.time()  # Actualiza el timestamp
-    
-    # Si es un mensaje de desconexión
-    if request.form.get('desconectando'):
-        disp.estado = 'desconectado'
-    
-    db.session.commit()
+    if disp:
+        disp.ultima_conexion = time.time()  # Actualiza el timestamp
+        db.session.commit()
     return jsonify({'status': 'ok'})
+
+
+
 
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
