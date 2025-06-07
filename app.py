@@ -183,11 +183,15 @@ def latido():
 @app.route('/actualizar', methods=['POST'])
 def actualizar_ubicacion():
     try:
-        codigo = request.form['codigo']
-        lat = float(request.form['latitud'])
-        lon = float(request.form['longitud'])
-        
-        print(f"Recibida ubicación de {codigo}: {lat}, {lon}")  # ← Log para depuración
+        if request.is_json:
+            data = request.get_json()
+            codigo = data['codigo']
+            lat = float(data['lat'])
+            lon = float(data['lon'])
+        else:
+            codigo = request.form['codigo']
+            lat = float(request.form['latitud'])
+            lon = float(request.form['longitud'])
         
         disp = Dispositivo.query.filter_by(codigo=codigo).first()
         if disp:
@@ -195,10 +199,16 @@ def actualizar_ubicacion():
             disp.lon = lon
             disp.ultima_conexion = time.time()
             db.session.commit()
-            return jsonify({'status': 'ok'})
+            
+            # Respuesta optimizada para background sync
+            return jsonify({
+                'status': 'ok',
+                'timestamp': time.time()
+            }), 200
     except Exception as e:
-        print(f"Error al actualizar ubicación: {str(e)}")  # ← Log de errores
-    return jsonify({'status': 'error'}), 400
+        print(f"Error actualizando ubicación: {str(e)}")
+    
+    return jsonify({'status': 'retry'}), 400
 
 
 

