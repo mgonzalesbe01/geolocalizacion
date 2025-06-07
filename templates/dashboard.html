@@ -81,113 +81,68 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      // Inicializa el mapa
       const map = L.map("mapa").setView([0, 0], 2);
+
+      // Cambia "pk.tu-token-aqui" por tu token real
       L.tileLayer(
-        "https://tiles.stadiamaps.com/tiles/alidade_slim/{z}/{x}/{y}{r}.png",
+        "https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.tu-token-aqui",
         {
           attribution:
-            '&copy; <a href="https://stadiamaps.com/">Stadia  Maps</a>',
+            'Map data &copy; <a href="https://www.mapbox.com/">Mapbox</a>',
+          maxZoom: 18,
         }
       ).addTo(map);
 
       const marcadores = {};
 
-      // Función para cargar los dispositivos desde la API
       async function cargarDispositivos() {
-        try {
-          const res = await fetch("/api/dispositivos");
-          const data = await res.json();
+        const res = await fetch("/api/dispositivos");
+        const data = await res.json();
 
-          const lista = document.getElementById("lista-dispositivos");
-          lista.innerHTML = ""; // Limpiar antes de recargar
+        document.getElementById("lista-dispositivos").innerHTML = "";
+        Object.entries(data).forEach(([codigo, coords]) => {
+          const li = document.createElement("li");
 
-          data.forEach((d) => {
-            const li = document.createElement("li");
+          const link = document.createElement("a");
+          link.href = "#";
+          link.textContent = coords.alias || codigo;
 
-            const link = document.createElement("a");
-            link.href = "#";
-            link.textContent = d.alias || d.codigo;
+          const eliminarBtn = document.createElement("button");
+          eliminarBtn.textContent = "Eliminar";
+          eliminarBtn.style.marginLeft = "10px";
 
-            const enlace = document.createElement("p");
-            const url = `https://${window.location.host}/${d.codigo}`;
-            enlace.className = "enlace";
-            enlace.textContent = url;
+          link.onclick = () => {
+            // Limpiar todos los marcadores
+            Object.values(marcadores).forEach((marker) =>
+              map.removeLayer(marker)
+            );
 
-            const btnCopiar = document.createElement("button");
-            btnCopiar.textContent = "Copiar";
-            btnCopiar.className = "btn-copiar";
-
-            // Copiar al portapapeles
-            btnCopiar.onclick = () => {
-              navigator.clipboard
-                .writeText(url)
-                .then(() => {
-                  alert("✅ Enlace copiado al portapapeles");
-                })
-                .catch((err) => {
-                  alert("❌ Error al copiar: " + err.message);
-                });
-            };
-
-            link.onclick = () => {
-              Object.values(markers).forEach((marker) =>
-                map.removeLayer(marker)
-              );
-
-              if (d.lat && d.lon) {
-                markers[d.codigo] = L.marker([d.lat, d.lon])
-                  .addTo(map)
-                  .bindPopup(
-                    `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
-                  );
-              }
-            };
-
-            li.appendChild(link);
-            li.appendChild(enlace);
-            li.appendChild(btnCopiar);
-            lista.appendChild(li);
-          });
-
-          // Si hay datos, centra el mapa en el último
-          if (data.length > 0) {
-            const last = data[data.length - 1];
-            if (last.lat && last.lon) {
+            if (coords.lat && coords.lon) {
+              marcadores[codigo] = L.marker([coords.lat, coords.lon])
+                .addTo(map)
+                .bindPopup(
+                  `<b>${coords.alias || codigo}</b><br>Lat: ${
+                    coords.lat
+                  }<br>Lon: ${coords.lon}`
+                );
+              map.setView([coords.lat, coords.lon], 16);
             }
-          }
-        } catch (err) {
-          console.error("Error al cargar dispositivos:", err);
-        }
+          };
+
+          eliminarBtn.onclick = () => {
+            if (confirm("¿Eliminar este dispositivo?")) {
+              fetch(`/eliminar/${codigo}`, { method: "GET" })
+                .then(() => location.reload())
+                .catch((err) => alert("Error al eliminar"));
+            }
+          };
+
+          li.appendChild(link);
+          li.appendChild(eliminarBtn);
+          document.getElementById("lista-dispositivos").appendChild(li);
+        });
       }
 
-      // Generar nuevo dispositivo
-      document
-        .getElementById("form-generar")
-        .addEventListener("submit", async (e) => {
-          e.preventDefault();
-          const aliasInput = document.querySelector(
-            '#form-generar input[name="alias"]'
-          );
-          const alias = aliasInput.value.trim();
-
-          const res = await fetch("/registrar-dispositivo", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: `alias=${encodeURIComponent(alias)}`,
-          });
-
-          const data = await res.json();
-          alert(
-            `Enlace generado: https://${window.location.host}/${data.codigo}`
-          );
-          aliasInput.value = "";
-          cargarDispositivos();
-        });
-
-      // Carga inicial y periódica
       setInterval(cargarDispositivos, 5000);
       cargarDispositivos();
     </script>
