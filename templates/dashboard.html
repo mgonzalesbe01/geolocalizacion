@@ -9,113 +9,184 @@
     />
     <style>
       body {
-        font-family: Arial, sans-serif;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         margin: 0;
         display: flex;
         height: 100vh;
+        background-color: #f5f5f5;
       }
+
       #sidebar {
-        width: 300px;
+        width: 350px;
         padding: 20px;
-        border-right: 1px solid #ccc;
-        background-color: #f9f9f9;
+        background-color: #2c3e50;
+        color: white;
         overflow-y: auto;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
       }
+
       #mapa {
         flex-grow: 1;
+        height: 100%;
       }
-      form input[type="text"] {
+
+      h3 {
+        color: #ecf0f1;
+        border-bottom: 1px solid #34495e;
+        padding-bottom: 10px;
+      }
+
+      form {
+        margin-bottom: 20px;
+      }
+
+      input[type="text"] {
         width: 100%;
         padding: 10px;
         margin-bottom: 10px;
-        box-sizing: border-box;
-      }
-      ul {
-        list-style: none;
-        padding-left: 0;
-      }
-      li {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 5px 0;
-        border-bottom: 1px solid #eee;
-      }
-      .enlace {
-        word-break: break-all;
-        color: blue;
-        text-decoration: underline;
-      }
-      .btn-copiar,
-      .btn-eliminar {
-        padding: 5px 10px;
-        cursor: pointer;
-        font-size: 12px;
-        margin-left: 10px;
+        border: none;
+        border-radius: 4px;
+        background-color: #34495e;
+        color: white;
       }
 
-      .btn-ver {
-        background: #2196f3;
+      button[type="submit"] {
+        background-color: #3498db;
         color: white;
         border: none;
-        padding: 5px 10px;
-        border-radius: 3px;
-        margin-right: 10px;
-        cursor: pointer;
-      }
-
-      .btn-ver:disabled {
-        background: #cccccc;
-        cursor: not-allowed;
-      }
-
-      .inactivo {
-        opacity: 0.6;
-      }
-
-      .estado {
-        margin-left: 10px;
-        font-size: 1.2em;
-      }
-      /* Estilos para la nueva estructura */
-      li {
-        padding: 10px;
-        margin-bottom: 5px;
+        padding: 10px 15px;
         border-radius: 4px;
-        background: #f5f5f5;
+        cursor: pointer;
+        width: 100%;
+        transition: background-color 0.3s;
+      }
+
+      button[type="submit"]:hover {
+        background-color: #2980b9;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      li {
+        background-color: #34495e;
+        margin-bottom: 10px;
+        padding: 15px;
+        border-radius: 4px;
         display: flex;
         align-items: center;
         justify-content: space-between;
+        transition: transform 0.2s;
       }
 
-      li.inactivo {
-        opacity: 0.6;
-        background: #eee;
+      li:hover {
+        transform: translateX(5px);
+      }
+
+      .dispositivo-info {
+        flex-grow: 1;
+      }
+
+      .codigo {
+        font-weight: bold;
+        color: #3498db;
       }
 
       .alias {
-        flex-grow: 1;
-        margin-right: 10px;
+        color: #ecf0f1;
+        margin: 5px 0;
+      }
+
+      .estado {
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 12px;
         font-weight: bold;
       }
 
-      .ver-mapa {
-        background: #4caf50;
+      .activo {
+        background-color: #2ecc71;
+        color: white;
+      }
+
+      .inactivo {
+        background-color: #e74c3c;
+        color: white;
+      }
+
+      .btn-ver {
+        background-color: #3498db;
         color: white;
         border: none;
         padding: 5px 10px;
         border-radius: 3px;
-        margin-right: 10px;
+        margin-right: 5px;
         cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .btn-ver:hover {
+        background-color: #2980b9;
+      }
+
+      .btn-ver:disabled {
+        background-color: #7f8c8d;
+        cursor: not-allowed;
       }
 
       .btn-eliminar {
-        background: #f44336;
+        background-color: #e74c3c;
         color: white;
         border: none;
         padding: 5px 10px;
         border-radius: 3px;
         cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .btn-eliminar:hover {
+        background-color: #c0392b;
+      }
+
+      .coordenadas-status {
+        font-size: 12px;
+        margin-top: 5px;
+      }
+
+      .con-coordenadas {
+        color: #2ecc71;
+      }
+
+      .sin-coordenadas {
+        color: #e74c3c;
+      }
+
+      .last-update {
+        font-size: 11px;
+        color: #bdc3c7;
+        margin-top: 3px;
+      }
+
+      .dispositivo-actions {
+        display: flex;
+        align-items: center;
+      }
+
+      .notification {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px;
+        background-color: #2ecc71;
+        color: white;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        z-index: 1000;
+        display: none;
       }
     </style>
   </head>
@@ -127,7 +198,7 @@
         <input
           type="text"
           name="alias"
-          placeholder="Alias (ej: Auto)"
+          placeholder="Nombre del dispositivo (ej: Auto de Juan)"
           required
         />
         <button type="submit">Generar Enlace</button>
@@ -145,67 +216,195 @@
     <!-- Mapa donde se mostrarán las ubicaciones -->
     <div id="mapa"></div>
 
+    <!-- Notificación -->
+    <div id="notification" class="notification"></div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const map = L.map("mapa").setView([0, 0], 2);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map
-      );
+      // Inicialización del mapa
+      const map = L.map("mapa").setView([20.0, -100.0], 5);
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
 
       const marcadores = {};
+      let intervaloActualizacion;
+      const notification = document.getElementById("notification");
 
-      // Función cargarDispositivos actualizada
+      // Función para mostrar notificaciones
+      function mostrarNotificacion(mensaje, tipo = "exito") {
+        notification.textContent = mensaje;
+        notification.style.display = "block";
+        notification.style.backgroundColor =
+          tipo === "exito" ? "#2ecc71" : "#e74c3c";
+
+        setTimeout(() => {
+          notification.style.display = "none";
+        }, 3000);
+      }
+
+      // Cargar dispositivos con ubicación
       async function cargarDispositivos() {
         try {
           const res = await fetch("/api/dispositivos");
-          const data = await res.json();
-          console.log("Datos dispositivos:", data); // Para depuración
+          if (!res.ok) throw new Error("Error al cargar dispositivos");
 
+          const data = await res.json();
           const lista = document.getElementById("lista-dispositivos");
           lista.innerHTML = "";
 
           data.forEach((d) => {
-            const li = document.createElement("li");
-            li.innerHTML = `
-                <span class="codigo">${d.codigo}</span>
-                <span class="alias">${d.alias || "Sin alias"}</span>
-                <span class="estado">${
-                  d.estado === "activo" ? "✅" : "❌"
-                }</span>
-                <button class="btn-ver" data-lat="${d.lat || ""}" data-lon="${
-              d.lon || ""
-            }" 
-                    ${!d.lat ? 'disabled title="No hay ubicación"' : ""}>
-                    Ver
-                </button>
-                <button class="btn-eliminar" data-codigo="${
-                  d.codigo
-                }">Eliminar</button>
-            `;
+            if (d.codigo === "favicon.ico") return;
 
-            // Habilitar funcionalidad del botón Ver
+            const li = document.createElement("li");
+            const tieneUbicacion = d.lat && d.lon;
+            const ultimaConexion = new Date((d.ultima_conexion || 0) * 1000);
+
+            li.innerHTML = `
+                        <div class="dispositivo-info">
+                            <div class="alias">${d.alias || "Sin nombre"}</div>
+                            <div>
+                                <span class="estado ${d.estado}">${
+              d.estado === "activo" ? "Activo" : "Inactivo"
+            }</span>
+                                <span class="coordenadas-status ${
+                                  tieneUbicacion
+                                    ? "con-coordenadas"
+                                    : "sin-coordenadas"
+                                }">
+                                    ${
+                                      tieneUbicacion
+                                        ? "Con ubicación"
+                                        : "Sin ubicación"
+                                    }
+                                </span>
+                            </div>
+                            <div class="last-update">
+                                Últ. actualización: ${ultimaConexion.toLocaleString()}
+                            </div>
+                        </div>
+                        <div class="dispositivo-actions">
+                            <button class="btn-ver" 
+                                    data-codigo="${d.codigo}"
+                                    ${
+                                      !tieneUbicacion
+                                        ? 'disabled title="Esperando primera ubicación"'
+                                        : ""
+                                    }>
+                                Ver
+                            </button>
+                            <button class="btn-eliminar" data-codigo="${
+                              d.codigo
+                            }">
+                                Eliminar
+                            </button>
+                        </div>
+                    `;
+
+            // Configurar botón Ver
             const verBtn = li.querySelector(".btn-ver");
-            if (verBtn && d.lat) {
+            if (verBtn && tieneUbicacion) {
               verBtn.addEventListener("click", () => {
                 map.setView([d.lat, d.lon], 15);
+
                 if (marcadores[d.codigo]) {
                   marcadores[d.codigo].setLatLng([d.lat, d.lon]);
                 } else {
                   marcadores[d.codigo] = L.marker([d.lat, d.lon])
                     .addTo(map)
-                    .bindPopup(`<b>${d.alias || d.codigo}</b>`);
+                    .bindPopup(
+                      `<b>${
+                        d.alias || d.codigo
+                      }</b><br>Actualizado: ${ultimaConexion.toLocaleTimeString()}`
+                    );
                 }
+
+                marcadores[d.codigo].openPopup();
+                mostrarNotificacion(
+                  `Mostrando ubicación de ${d.alias || d.codigo}`
+                );
               });
             }
+
+            // Configurar botón Eliminar
+            li.querySelector(".btn-eliminar").addEventListener("click", () => {
+              if (confirm(`¿Eliminar dispositivo ${d.alias || d.codigo}?`)) {
+                fetch(`/eliminar/${d.codigo}`, { method: "DELETE" })
+                  .then((res) => {
+                    if (res.ok) {
+                      mostrarNotificacion(`Dispositivo ${d.codigo} eliminado`);
+                      if (marcadores[d.codigo]) {
+                        map.removeLayer(marcadores[d.codigo]);
+                        delete marcadores[d.codigo];
+                      }
+                      return cargarDispositivos();
+                    }
+                    throw new Error("Error al eliminar");
+                  })
+                  .catch((err) => {
+                    console.error(err);
+                    mostrarNotificacion(err.message, "error");
+                  });
+              }
+            });
 
             lista.appendChild(li);
           });
         } catch (err) {
-          console.error("Error:", err);
+          console.error("Error al cargar dispositivos:", err);
+          mostrarNotificacion("Error al cargar dispositivos", "error");
         }
       }
 
-      // Generar nuevo dispositivo
+      // Cargar links generados
+      async function cargarLinksGenerados() {
+        try {
+          const res = await fetch("/api/links-generados");
+          if (!res.ok) throw new Error("Error al cargar enlaces");
+
+          const data = await res.json();
+          const lista = document.getElementById("lista-links");
+          lista.innerHTML = "";
+
+          data.forEach((d) => {
+            const li = document.createElement("li");
+            const url = `https://${window.location.host}/${d.codigo}`;
+
+            li.innerHTML = `
+                        <div class="dispositivo-info">
+                            <div class="codigo">${d.codigo}</div>
+                            <div class="alias">${d.alias || "Sin nombre"}</div>
+                            <div class="coordenadas-status sin-coordenadas">
+                                Enlace de rastreo
+                            </div>
+                        </div>
+                        <div class="dispositivo-actions">
+                            <button class="btn-copiar" data-url="${url}">
+                                Copiar
+                            </button>
+                        </div>
+                    `;
+
+            // Configurar botón Copiar
+            li.querySelector(".btn-copiar").addEventListener("click", () => {
+              navigator.clipboard
+                .writeText(url)
+                .then(() =>
+                  mostrarNotificacion("Enlace copiado al portapapeles")
+                )
+                .catch(() => mostrarNotificacion("Error al copiar", "error"));
+            });
+
+            lista.appendChild(li);
+          });
+        } catch (err) {
+          console.error("Error al cargar enlaces:", err);
+          mostrarNotificacion("Error al cargar enlaces", "error");
+        }
+      }
+
+      // Generar nuevo enlace
       document
         .getElementById("form-generar")
         .addEventListener("submit", async (e) => {
@@ -215,45 +414,63 @@
           );
           const alias = aliasInput.value.trim();
 
-          const res = await fetch("/registrar-dispositivo", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/x-www-form-urlencoded",
-            },
-            body: `alias=${encodeURIComponent(alias)}`,
-          });
+          try {
+            const res = await fetch("/generar-enlace", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+              },
+              body: `alias=${encodeURIComponent(alias)}`,
+            });
 
-          const data = await res.json();
-          aliasInput.value = "";
-          cargarLinksGenerados(); // Recargar solo la lista de enlaces
-          cargarDispositivos(); // Recargar solo los dispositivos con ubicación
+            if (!res.ok) throw new Error("Error al generar enlace");
+
+            const data = await res.json();
+            mostrarNotificacion(`Enlace generado: ${data.alias}`);
+            aliasInput.value = "";
+
+            // Actualizar ambas listas
+            await Promise.all([cargarDispositivos(), cargarLinksGenerados()]);
+
+            // Mostrar el enlace generado
+            const url = `https://${window.location.host}/${data.codigo}`;
+            if (
+              confirm(
+                `Enlace generado: ${url}\n¿Deseas copiarlo al portapapeles?`
+              )
+            ) {
+              navigator.clipboard
+                .writeText(url)
+                .then(() => mostrarNotificacion("Enlace copiado"))
+                .catch(() => mostrarNotificacion("Error al copiar", "error"));
+            }
+          } catch (err) {
+            console.error("Error:", err);
+            mostrarNotificacion(err.message, "error");
+          }
         });
 
-      function actualizarMarcadores() {
-        fetch(`/dispositivo/${codigo}/estado`)
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.activo) {
-              // Actualiza el marcador
-              marcadores[codigo].setLatLng([
-                data.ubicacion.lat,
-                data.ubicacion.lon,
-              ]);
-            } else {
-              // Muestra notificación de desconectado
-              mostrarNotificacion(`${codigo} desconectado`);
-            }
-          });
+      // Iniciar actualización periódica
+      function iniciarActualizacion() {
+        intervaloActualizacion = setInterval(() => {
+          cargarDispositivos();
+        }, 5000); // Actualizar cada 5 segundos
       }
 
-      // Intenta reconectar cada 5 segundos
-      setInterval(actualizarMarcadores, 5000);
+      // Detener actualización cuando la pestaña no está activa
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          clearInterval(intervaloActualizacion);
+        } else {
+          cargarDispositivos();
+          iniciarActualizacion();
+        }
+      });
 
-      // Carga inicial y periódica
-      setInterval(cargarDispositivos, 3000);
-      setInterval(cargarLinksGenerados, 5000);
+      // Carga inicial
       cargarDispositivos();
       cargarLinksGenerados();
+      iniciarActualizacion();
     </script>
   </body>
 </html>
