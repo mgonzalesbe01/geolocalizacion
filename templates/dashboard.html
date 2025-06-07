@@ -98,15 +98,83 @@
           const res = await fetch("/api/dispositivos");
           const data = await res.json();
 
-          const lista = document.getElementById("lista-dispositivos");
-          lista.innerHTML = ""; // Limpiar antes de recargar
+          const listaDispositivos =
+            document.getElementById("lista-dispositivos");
+          listaDispositivos.innerHTML = ""; // Limpiar antes de recargar
+
+          data.forEach((d) => {
+            if (d.lat && d.lon) {
+              // Solo muestra dispositivos con ubicación
+              const li = document.createElement("li");
+
+              const link = document.createElement("a");
+              link.href = "#";
+              link.textContent = d.alias || d.codigo;
+
+              const enlace = document.createElement("p");
+              const url = `https://${window.location.host}/${d.codigo}`;
+              enlace.className = "enlace";
+              enlace.textContent = url;
+
+              const btnCopiar = document.createElement("button");
+              btnCopiar.textContent = "Copiar";
+              btnCopiar.className = "btn-copiar";
+
+              // Copiar al portapapeles
+              btnCopiar.onclick = () => {
+                navigator.clipboard
+                  .writeText(url)
+                  .then(() => {
+                    alert("✅ Enlace copiado al portapapeles");
+                  })
+                  .catch((err) => {
+                    alert("❌ Error al copiar: " + err.message);
+                  });
+              };
+
+              link.onclick = () => {
+                Object.values(marcadores).forEach((marker) =>
+                  map.removeLayer(marker)
+                );
+
+                if (d.lat && d.lon) {
+                  marcadores[d.codigo] = L.marker([d.lat, d.lon])
+                    .addTo(map)
+                    .bindPopup(
+                      `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
+                    );
+                }
+              };
+
+              li.appendChild(link);
+              li.appendChild(enlace);
+              li.appendChild(btnCopiar);
+              listaDispositivos.appendChild(li);
+            }
+          });
+
+          // Si hay datos, centra el mapa en el último
+          if (data.length > 0) {
+            const last = data[data.length - 1];
+            if (last.lat && last.lon) {
+            }
+          }
+        } catch (err) {
+          console.error("Error al cargar dispositivos:", err);
+        }
+      }
+
+      // Cargar links generados
+      async function cargarLinksGenerados() {
+        try {
+          const res = await fetch("/api/links-generados");
+          const data = await res.json();
+
+          const listaLinks = document.getElementById("lista-links");
+          listaLinks.innerHTML = ""; // Limpiar antes de recargar
 
           data.forEach((d) => {
             const li = document.createElement("li");
-
-            const link = document.createElement("a");
-            link.href = "#";
-            link.textContent = d.alias || d.codigo;
 
             const enlace = document.createElement("p");
             const url = `https://${window.location.host}/${d.codigo}`;
@@ -129,36 +197,12 @@
                 });
             };
 
-            link.onclick = () => {
-              Object.values(marcadores).forEach((marker) =>
-                map.removeLayer(marker)
-              );
-
-              if (d.lat && d.lon) {
-                marcadores[d.codigo] = L.marker([d.lat, d.lon])
-                  .addTo(map)
-                  .bindPopup(
-                    `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
-                  );
-                map.setView([d.lat, d.lon], 16);
-              }
-            };
-
-            li.appendChild(link);
             li.appendChild(enlace);
             li.appendChild(btnCopiar);
-            lista.appendChild(li);
+            listaLinks.appendChild(li);
           });
-
-          // Si hay datos, centra el mapa en el último
-          if (data.length > 0) {
-            const last = data[data.length - 1];
-            if (last.lat && last.lon) {
-              map.setView([last.lat, last.lon], 16);
-            }
-          }
         } catch (err) {
-          console.error("Error al cargar dispositivos:", err);
+          console.error("Error al cargar enlaces generados:", err);
         }
       }
 
@@ -174,7 +218,9 @@
 
           const res = await fetch("/registrar-dispositivo", {
             method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
             body: `alias=${encodeURIComponent(alias)}`,
           });
 
@@ -184,11 +230,13 @@
           );
           aliasInput.value = "";
           cargarDispositivos();
+          cargarLinksGenerados();
         });
 
       // Carga inicial y periódica
       setInterval(cargarDispositivos, 5000);
       cargarDispositivos();
+      cargarLinksGenerados();
     </script>
   </body>
 </html>
