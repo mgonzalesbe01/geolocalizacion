@@ -73,12 +73,12 @@ def eliminar_dispositivo(codigo):
 def registrar_dispositivo():
     alias = request.form.get('alias')
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
-    
+
     nuevo = Dispositivo(codigo=codigo, alias=alias)
     db.session.add(nuevo)
     db.session.commit()
-    
-    return jsonify({'codigo': codigo})
+
+    return jsonify({'codigo': codigo, 'alias': alias or codigo})
 
 
 @app.route('/<string:codigo>')
@@ -116,6 +116,11 @@ def api_dispositivos():
                 'codigo': d.codigo,
                 'lat': d.lat,
                 'lon': d.lon,
+                'alias': d.alias or d.codigo
+            })
+        else:
+            data.append({
+                'codigo': d.codigo,
                 'alias': d.alias or d.codigo
             })
     return jsonify(data)

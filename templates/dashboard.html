@@ -19,13 +19,14 @@
         width: 300px;
         padding: 20px;
         border-right: 1px solid #ccc;
+        background-color: #f9f9f9;
         overflow-y: auto;
       }
-      #map {
+      #mapa {
         flex-grow: 1;
         height: 100%;
       }
-      form input {
+      form input[type="text"] {
         width: 100%;
         padding: 10px;
         margin-bottom: 10px;
@@ -38,17 +39,28 @@
       li {
         display: flex;
         justify-content: space-between;
+        align-items: center;
         padding: 5px 0;
         border-bottom: 1px solid #eee;
       }
-      button {
+      .enlace {
+        word-break: break-all;
+        cursor: pointer;
+        color: blue;
+        text-decoration: underline;
+      }
+      .btn-copiar {
+        margin-left: 10px;
+        padding: 5px 10px;
+        font-size: 12px;
         cursor: pointer;
       }
     </style>
   </head>
   <body>
     <div id="sidebar">
-      <h2>Generar Nuevo Enlace</h2>
+      <!-- Formulario para generar nuevo dispositivo -->
+      <h3>Generar Nuevo Enlace</h3>
       <form id="form-generar">
         <input
           type="text"
@@ -59,28 +71,37 @@
         <button type="submit">Generar Enlace</button>
       </form>
 
+      <!-- Lista de mis dispositivos + enlaces -->
       <h3>Mis Dispositivos</h3>
       <ul id="lista-dispositivos"></ul>
     </div>
 
-    <div id="map" style="height: 100%"></div>
+    <!-- Mapa donde se mostrarán las ubicaciones -->
+    <div id="mapa"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-      const map = L.map("map").setView([0, 0], 2);
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png").addTo(
-        map
-      );
+      // Inicializa el mapa
+      const map = L.map("mapa").setView([0, 0], 2);
+      L.tileLayer(
+        "https://tiles.stadiamaps.com/tiles/alidade_slim/{z}/{x}/{y}{r}.png",
+        {
+          attribution:
+            '&copy; <a href="https://stadiamaps.com/">Stadia  Maps</a>',
+        }
+      ).addTo(map);
 
-      const markers = {};
+      const marcadores = {};
 
-      // Función para cargar dispositivos
+      // Función para cargar los dispositivos desde la API
       async function cargarDispositivos() {
         try {
           const res = await fetch("/api/dispositivos");
           const data = await res.json();
 
-          document.getElementById("lista-dispositivos").innerHTML = "";
+          const lista = document.getElementById("lista-dispositivos");
+          lista.innerHTML = ""; // Limpiar antes de recargar
+
           data.forEach((d) => {
             const li = document.createElement("li");
 
@@ -88,12 +109,28 @@
             link.href = "#";
             link.textContent = d.alias || d.codigo;
 
-            const eliminarBtn = document.createElement("button");
-            eliminarBtn.textContent = "Eliminar";
-            eliminarBtn.style.marginLeft = "10px";
+            const enlace = document.createElement("p");
+            const url = `https://${window.location.host}/${d.codigo}`;
+            enlace.className = "enlace";
+            enlace.textContent = url;
+
+            const btnCopiar = document.createElement("button");
+            btnCopiar.textContent = "Copiar";
+            btnCopiar.className = "btn-copiar";
+
+            // Copiar al portapapeles
+            btnCopiar.onclick = () => {
+              navigator.clipboard
+                .writeText(url)
+                .then(() => {
+                  alert("✅ Enlace copiado al portapapeles");
+                })
+                .catch((err) => {
+                  alert("❌ Error al copiar: " + err.message);
+                });
+            };
 
             link.onclick = () => {
-              // Limpiar mapa
               Object.values(markers).forEach((marker) =>
                 map.removeLayer(marker)
               );
@@ -104,28 +141,19 @@
                   .bindPopup(
                     `<b>${d.alias || d.codigo}</b><br>Código: ${d.codigo}`
                   );
-                map.setView([d.lat, d.lon], 16);
-              }
-            };
-
-            eliminarBtn.onclick = () => {
-              if (confirm("¿Eliminar este dispositivo?")) {
-                fetch(`/eliminar/${d.codigo}`, { method: "GET" })
-                  .then(() => location.reload())
-                  .catch((err) => alert("Error al eliminar"));
               }
             };
 
             li.appendChild(link);
-            li.appendChild(eliminarBtn);
-            document.getElementById("lista-dispositivos").appendChild(li);
+            li.appendChild(enlace);
+            li.appendChild(btnCopiar);
+            lista.appendChild(li);
           });
 
-          // Si hay datos, centra el mapa
+          // Si hay datos, centra el mapa en el último
           if (data.length > 0) {
-            const first = data[0];
-            if (first.lat && first.lon) {
-              map.setView([first.lat, first.lon], 16);
+            const last = data[data.length - 1];
+            if (last.lat && last.lon) {
             }
           }
         } catch (err) {
@@ -133,12 +161,15 @@
         }
       }
 
-      // Manejo del formulario de generar-enlace
+      // Generar nuevo dispositivo
       document
         .getElementById("form-generar")
         .addEventListener("submit", async (e) => {
           e.preventDefault();
-          const alias = e.target[0].value.trim();
+          const aliasInput = document.querySelector(
+            '#form-generar input[name="alias"]'
+          );
+          const alias = aliasInput.value.trim();
 
           const res = await fetch("/registrar-dispositivo", {
             method: "POST",
@@ -152,11 +183,11 @@
           alert(
             `Enlace generado: https://${window.location.host}/${data.codigo}`
           );
-          e.target.reset();
+          aliasInput.value = "";
           cargarDispositivos();
         });
 
-      // Recargar dispositivos cada 5 segundos
+      // Carga inicial y periódica
       setInterval(cargarDispositivos, 5000);
       cargarDispositivos();
     </script>
