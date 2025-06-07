@@ -42,17 +42,17 @@ def home():
 
 @app.route('/generar-enlace', methods=['POST'])
 def generar_enlace():
-    alias = request.form.get('alias')
+    alias = request.form.get('alias', '').strip()  # Asegura que alias es string y limpia espacios
     codigo = ''.join(random.choices(string.ascii_lowercase + string.digits, k=8))
     
-    nuevo = Dispositivo(codigo=codigo, alias=alias)
+    nuevo = Dispositivo(codigo=codigo, alias=alias if alias else None)  # Guarda None si alias está vacío
     db.session.add(nuevo)
     db.session.commit()
     
     return jsonify({
         'codigo': codigo,
-        'alias': alias or codigo,
-        'enlace': f'https://{request.host}/{codigo}' 
+        'alias': alias or codigo,  # Muestra el alias o el código si alias está vacío
+        'enlace': f'https://{request.host}/{codigo}'
     })
     
 @app.route('/eliminar/<string:codigo>', methods=['DELETE'])

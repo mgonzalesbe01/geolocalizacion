@@ -54,6 +54,21 @@
         margin-left: 10px;
       }
 
+      .btn-ver {
+        background: #2196f3;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 3px;
+        margin-right: 10px;
+        cursor: pointer;
+      }
+
+      .btn-ver:disabled {
+        background: #cccccc;
+        cursor: not-allowed;
+      }
+
       .inactivo {
         opacity: 0.6;
       }
@@ -81,6 +96,7 @@
       .alias {
         flex-grow: 1;
         margin-right: 10px;
+        font-weight: bold;
       }
 
       .ver-mapa {
@@ -223,32 +239,31 @@
           lista.innerHTML = "";
 
           data.forEach((d) => {
-            if (d.codigo === "favicon.ico") return;
-
             const li = document.createElement("li");
+            li.innerHTML = `
+        <span class="alias">${d.alias || d.codigo}</span>
+        <span class="estado">${d.estado === "activo" ? "✅" : "❌"}</span>
+        <button class="btn-ver" data-codigo="${d.codigo}">Ver</button>
+        <button class="btn-eliminar" data-codigo="${d.codigo}">Eliminar</button>
+    `;
 
-            const enlace = document.createElement("p");
-            const url = `https://${window.location.host}/${d.codigo}`;
-            enlace.className = "enlace";
-            enlace.textContent = url;
+            // Deshabilita el botón si no hay ubicación
+            const verBtn = li.querySelector(".btn-ver");
+            if (!d.lat || !d.lon) {
+              verBtn.disabled = true;
+              verBtn.title = "Esperando primera ubicación";
+            }
 
-            const btnCopiar = document.createElement("button");
-            btnCopiar.textContent = "Copiar";
-            btnCopiar.className = "btn-copiar";
+            // Añade funcionalidad al botón Ver
+            verBtn.addEventListener("click", () => {
+              if (d.lat && d.lon) {
+                map.setView([d.lat, d.lon], 15);
+                if (marcadores[d.codigo]) {
+                  marcadores[d.codigo].openPopup();
+                }
+              }
+            });
 
-            btnCopiar.onclick = () => {
-              navigator.clipboard
-                .writeText(url)
-                .then(() => {
-                  alert("✅ Enlace copiado");
-                })
-                .catch((err) => {
-                  alert("❌ Error al copiar: " + err.message);
-                });
-            };
-
-            li.appendChild(enlace);
-            li.appendChild(btnCopiar);
             lista.appendChild(li);
           });
         } catch (err) {
